@@ -1,0 +1,15 @@
+@v 1
+@mid ref:msg:01JH0Q7C0D1E2F3G4H5I6J7K8L9M
+@ts 2026-01-31T16:40:00.123+01:00
+@root ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
+@parent ref:msg:01JH0Q7B9C0D1E2F3G4H5I6J7K8L
+@deps ref:msg:01JH0Q7A8B9C2D3E4F5G6H7I8J9K,ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
+
+sum{t=conversation,s=c,l=1,m=0,a=i,fmt=bul} @rid=a1
+#fact thread_messages=3 @rid=f1
+#fact total_cost_usd=0.28 @rid=f2
+#fact budget_remaining_usd=0.22 @rid=f3
+#ref initial_request=ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B#a1 @rid=r1
+#ref research_bid=ref:msg:01JH0Q7A8B9C2D3E4F5G6H7I8J9K#a1 @rid=r2
+#ref research_results=ref:msg:01JH0Q7B9C0D1E2F3G4H5I6J7K8L#r1 @rid=r3
+#quota type=tokens total=15000 used=12500 @rid=q1

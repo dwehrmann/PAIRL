@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.venv
+venv/
+ENV/
+env/
+
+# TypeScript/JavaScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+*.tsbuildinfo
+dist/
+build/
+
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+coverage/
+*.log
+
+# Local development
+.env
+.env.local
+*.local
+
+# Build artifacts
+*.o
+*.a
+*.out
+
+# Documentation builds
+docs/_build/
+site/
+COMMERCIAL.md
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

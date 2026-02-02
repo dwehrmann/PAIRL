@@ -1,0 +1,30 @@
+@v 1
+@mid ref:msg:01JH0Q7D1E2F3G4H5I6J7K8L9M0N
+@ts 2026-01-31T17:00:00.000+01:00
+@root ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
+@parent ref:msg:01JH0Q7C0D1E2F3G4H5I6J7K8L9M
+@budget 0.50USD
+@hash ref:hash:sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+rpt{t=final_report,s=f,l=3,m=+,a=c,u=lo,fmt=par} @rid=a1
+#fact report_title="AI Trends 2026: Comprehensive Analysis" @rid=f1
+#fact report_date=2026-01-31 @rid=f2
+#fact sections_count=5 @rid=f3
+#fact word_count=2500 @rid=f4
+#fact confidence_avg=0.83 @rid=f5
+#ref full_report=ref:doc:sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 @rid=r1
+#ref source_1=ref:url:techcrunch:2025-12-15 @rid=r2
+#ref source_2=ref:url:gartner:2026-01-10 @rid=r3
+#ref source_3=ref:url:forrester:2026-01-20 @rid=r4
+#ref source_4=ref:url:arxiv:2026-01-15 @rid=r5
+#ref source_5=ref:url:mit-tech-review:2026-01-25 @rid=r6
+#evid claim="LLM costs decreased 60% in 2025" src=ref:url:techcrunch:2025-12-15 conf=0.85 @rid=e1
+#evid claim="Multi-agent systems adoption increased 300%" src=ref:url:gartner:2026-01-10 conf=0.90 @rid=e2
+#evid claim="PAIRL adoption growing in enterprise" src=ref:url:forrester:2026-01-20 conf=0.75 @rid=e3
+#evid claim="Transformer alternatives showing promise" src=ref:url:arxiv:2026-01-15 conf=0.70 @rid=e4
+#evid claim="AI regulation frameworks converging globally" src=ref:url:mit-tech-review:2026-01-25 conf=0.88 @rid=e5
+#cost val=0.42 cur=USD model=gpt-4o note="research + analysis + report generation" @rid=c1
+#quota type=tokens total=50000 used=38500 rem=11500 @rid=q1
+#quota type=api_calls total=25 used=18 rem=7 @rid=q2
+#rule no_new_facts=true @rid=x1
+#rule require_src_for_claims=true @rid=x2

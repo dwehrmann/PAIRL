@@ -1,0 +1,15 @@
+@v 1
+@mid ref:msg:01JH0Q7B9C0D1E2F3G4H5I6J7K8L
+@ts 2026-01-31T16:35:15.789+01:00
+@root ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
+@parent ref:msg:01JH0Q7A8B9C2D3E4F5G6H7I8J9K
+
+cmp{t=research,s=f,l=2,m=+,a=i} @rid=a1
+#fact topic=ai_trends_2026 @rid=f1
+#fact sources_analyzed=5 @rid=f2
+#ref report=ref:doc:sha256:abc123def456789012345678901234567890abcd @rid=r1
+#evid claim="LLM costs decreased 60% in 2025" src=ref:url:techcrunch:2025-12-15 conf=0.85 @rid=e1
+#evid claim="Multi-agent systems adoption increased 300%" src=ref:url:gartner:2026-01-10 conf=0.90 @rid=e2
+#evid claim="PAIRL adoption growing in enterprise" src=ref:url:forrester:2026-01-20 conf=0.75 @rid=e3
+#cost val=0.28 cur=USD model=gpt-4o note="actual cost" @rid=c1
+#quota type=tokens total=15000 used=12500 rem=2500 @rid=q1

@@ -1,0 +1,9 @@
+@v 1
+@mid ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
+@ts 2026-01-31T16:20:01.123+01:00
+
+req{t=specs,s=f,l=2,m=+,a=c} @rid=a1
+#fact ask=spec_document @rid=f1
+#fact format=pdf_or_link @rid=f2
+#fact deadline=2026-02-05 @rid=f3
+#ref specs=ref:doc:sha256:9c1a0f2b3e4d5c6f7a8b9c0d1e2f3a4b @rid=r1
