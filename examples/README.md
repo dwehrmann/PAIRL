@@ -6,31 +6,61 @@ This directory contains example PAIRL messages demonstrating various features an
 
 ## Example Files
 
-1. **[01-basic-request.pairl](01-basic-request.pairl)**
+Each example includes:
+- **`.pairl`** file — the raw PAIRL message
+- **`.rendered.md`** file — human-readable rendering (see §10 in SPEC.md)
+
+1. **[01-basic-request.pairl](01-basic-request.pairl)** | [Rendered](01-basic-request.rendered.md)
    - Simple request message
    - Shows minimal required headers
    - Basic fact and reference records
 
-2. **[02-agent-a-request.pairl](02-agent-a-request.pairl)**
+2. **[02-agent-a-request.pairl](02-agent-a-request.pairl)** | [Rendered](02-agent-a-request.rendered.md)
    - Agent initiates research task
    - Includes budget constraints (v1.1)
    - Shows bid intent for resource proposal
 
-3. **[03-agent-b-response.pairl](03-agent-b-response.pairl)**
+3. **[03-agent-b-response.pairl](03-agent-b-response.pairl)** | [Rendered](03-agent-b-response.rendered.md)
    - Agent responds to request
    - Shows evidence-based reporting
    - Includes cost and quota tracking (v1.1)
 
-4. **[04-threaded-summary.pairl](04-threaded-summary.pairl)**
+4. **[04-threaded-summary.pairl](04-threaded-summary.pairl)** | [Rendered](04-threaded-summary.rendered.md)
    - Message threading with @parent
    - Summarizes previous conversation
    - References specific records from parent messages
 
-5. **[05-complex-report.pairl](05-complex-report.pairl)**
+5. **[05-complex-report.pairl](05-complex-report.pairl)** | [Rendered](05-complex-report.rendered.md)
    - Multi-record message
    - Evidence attribution with confidence scores
    - Economic features (budget, cost, quota)
    - Demonstrates validation rules
+
+---
+
+## Understanding PAIRL Rendering
+
+**PAIRL is machine-to-machine format. Humans see rendered versions.**
+
+Each example includes a `.rendered.md` file showing how a PAIRL renderer would convert the compact message into natural language for human consumption.
+
+**Key concept:**
+```
+Agent A → [PAIRL message] → Agent B
+                ↓
+         [PAIRL renderer]
+                ↓
+             Human
+```
+
+**What renderers do:**
+- Convert compact intents into natural prose
+- Use style signals (`s`, `l`, `m`, `a`, `fmt`) to control tone/format
+- Present facts and evidence in readable format
+- Add context and formatting for clarity
+- **Never** add facts not in the original message
+
+See [SPEC.md §10](../SPEC.md) for full rendering guidelines.
 
 ---
 
