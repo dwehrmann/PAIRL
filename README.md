@@ -1,6 +1,6 @@
 # PAIRL — Protocol for Agent Intermediate Representation (Lite)
 
-**Version 1.1** | [Specification](SPEC.md) | [Examples](examples/) | [Contributing](CONTRIBUTING.md) | [Commercial Use](COMMERCIAL.md)
+**Version 1.1** | [Specification](SPEC.md) | [Examples](examples/) | [Contributing](CONTRIBUTING.md) | [Website](https://pairl.dev)
 
 ---
 
