@@ -176,7 +176,7 @@ Parameters are comma-separated `k=v`.
 
 * `t` — topic/target (short identifier)
 * `s` — style: `f|c|t|p|e`
-   * `f` formal, `c` casual, `t` trocken, `p` poetisch, `e` erhaben
+   * `f` formal, `c` casual, `t` terse, `p` poetic, `e` elevated
 * `l` — length: `0|1|2|3`
    * 0 ultra-short, 1 short, 2 normal, 3 longer
 * `m` — mood: `+|-|!|0`
@@ -193,7 +193,7 @@ Parameters are comma-separated `k=v`.
 
 **PAIRL does not include a `lang` parameter.**
 
-Traditional protocols often tag content with language identifiers (e.g., `lang=de`, `lang=en`). PAIRL deliberately omits this for several reasons:
+Traditional protocols often tag content with language identifiers (e.g., `lang=de`, `lang=en`). PAIRL deliberately **omits this** for several reasons:
 
 1. **Agent capability**: Modern LLMs are natively multilingual. Agent-to-agent communication does not require language tagging - agents understand content regardless of source language.
 
