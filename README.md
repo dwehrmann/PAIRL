@@ -119,7 +119,7 @@ Messages form a DAG (directed acyclic graph):
 * **Human-in-the-loop**: review agent reasoning before execution
 * **Agentic APIs**: structured requests/responses
 
-See [COMMERCIAL.md](COMMERCIAL.md) for business use cases.
+Commercial use is permitted under Apache 2.0 (see [LICENSE](LICENSE)).
 
 ---
 
@@ -191,7 +191,6 @@ See [LICENSE](LICENSE) for full details.
 * [Full Specification](SPEC.md)
 * [Examples](examples/)
 * [Contributing](CONTRIBUTING.md)
-* [Commercial Use Cases](COMMERCIAL.md)
 * [Changelog](CHANGELOG.md)
 
 ---

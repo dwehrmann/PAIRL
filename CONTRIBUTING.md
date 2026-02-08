@@ -147,7 +147,7 @@ We welcome reference implementations in any language. Priority languages:
 
 * **Spec changes**: Always update SPEC.md + CHANGELOG.md
 * **New features**: Add to appropriate section, include examples
-* **Use cases**: Add to COMMERCIAL.md if business-relevant
+* **Use cases**: Add to README.md "Use Cases" if business-relevant
 * **Examples**: Add to examples/ directory
 
 ### Documentation Style

@@ -109,7 +109,7 @@ Header lines start with `@`.
 ### 2.4 Message ID Recommendations
 
 * Prefer **ULID** for `@mid` (sortable, collision-safe, 26 characters).
-* Prefer `@hash` = `sha256(canonical_message_bytes)` for immutability/audit.
+* Prefer `@hash` = `sha256(canonical_message_bytes_without_@hash)` for immutability/audit (see §8.6).
 * Using `@mid` only is acceptable; using `@mid` + `@hash` is best practice.
 
 ### 2.5 Timestamp Precision
@@ -139,7 +139,7 @@ PAIRL v1.1 defines:
 
 **Economic records (v1.1)**
 * `#cost val=<float> cur=<unit> [model=<id>]`
-* `#quota type=<unit> total=<float> used=<float> [rem=<float>]`
+* `#quota type=<unit> total=<float> [used=<float>] [rem=<float>]`
 
 All records may optionally include `@rid=<rid>` at the end.
 
@@ -165,7 +165,9 @@ An intent is:
 <intent>{<kvpairs>}
 ```
 
-* `<intent>`: 2–4 chars, `[a-z0-9]{2,4}` (lowercase).
+* `<intent>`:
+   * **Core intent**: 2–4 chars, `[a-z0-9]{2,4}` (lowercase)
+   * **Custom intent**: dotted namespace form, e.g. `org.acme.custom`
 * `{}` is optional if no args, but recommended for uniformity.
 
 ### 4.1 Standard Intent Parameters (v1.1)
@@ -187,7 +189,7 @@ Parameters are comma-separated `k=v`.
 * `fmt` — formatting hint: `par|bul|num`
    * `par` paragraphs, `bul` bullets, `num` numbered list
 
-**Canonical key order** (see §7.3): `t,s,l,m,a,u,fmt`
+**Canonical key order** (see §8.3): `t,s,l,m,a,u,fmt`
 
 ### 4.1.1 Language Handling (Deliberate Omission)
 
@@ -223,7 +225,7 @@ You can extend this registry in your implementation, but v1.1 commonly includes:
 * `nxt` — next action (one-liner)
 * `sum` — summarize
 * `upd` — update/status report
-* `cmp` — complete/done
+* `fin` — complete/done
 * `hld` — hold/pause
 * `blk` — blocked/waiting
 
@@ -274,7 +276,7 @@ You can extend this registry in your implementation, but v1.1 commonly includes:
 
 * **Core intents** (§4.2) are standardized in this spec.
 * **Custom intents** can be defined per-implementation or per-project.
-* For custom intents in multi-organization contexts, consider namespacing: `org.acme.custom{...}`
+* For custom intents in multi-organization contexts, namespaced forms are allowed: `org.acme.custom{...}`
 * Intent definitions may be versioned separately from the PAIRL protocol itself.
 
 ---
@@ -308,6 +310,7 @@ You can extend this registry in your implementation, but v1.1 commonly includes:
 Format:
 
 ```
+#ref key=ref:<namespace>:<id> [@rid=...]
 #ref key=ref:<namespace>:<type>:<id> [@rid=...]
 ```
 
@@ -397,15 +400,15 @@ Format:
 Format:
 
 ```
-#quota type=<unit> total=<float> used=<float> [rem=<float>] [@rid=...]
+#quota type=<unit> total=<float> [used=<float>] [rem=<float>] [@rid=...]
 ```
 
 **Required keys**:
 * `type` — resource type (e.g., `tokens`, `api_calls`, `seconds`)
 * `total` — total allocated quota
-* `used` — amount used so far
 
 **Optional keys**:
+* `used` — amount used so far (optional for proposals/pre-execution messages)
 * `rem` — remaining quota (can be computed: `rem = total - used`)
 
 **Examples**:
@@ -444,6 +447,48 @@ Use double quotes when values contain spaces or special characters:
 #evid claim="authorities attribute cause to accidents" src=ref:url:... conf=0.70
 #cost note="includes both analysis and summarization"
 ```
+
+### 7.3 Minimal Grammar (Conformance Baseline)
+
+The grammar below defines the minimum syntax strict parsers should accept.
+
+```
+message         := header-block LF body
+header-block    := header-line *(LF header-line)
+body            := *(record-line LF) [record-line]
+header-line     := "@" hkey SP hval
+record-line     := intent-record / hash-record
+
+intent-record   := intent-name ["{" kvpairs "}"] [SP rid]
+intent-name     := core-intent / custom-intent
+core-intent     := 2*4(LOWER / DIGIT)
+custom-intent   := ident "." ident *("." ident)
+
+hash-record     := "#" ident SP kvpairs [SP rid]
+rid             := "@rid=" 1*8(ALNUM)
+kvpairs         := kvpair *("," kvpair) / kvpair *(SP kvpair)
+kvpair          := key "=" value
+key             := LOWER *(LOWER / DIGIT / "_")
+value           := atom / quoted
+quoted          := DQUOTE *(%x20-21 / %x23-5B / %x5D-10FFFF / '\"') DQUOTE
+atom            := 1*(ALNUM / ":" / "." / "_" / "/" / "@" / "+" / "-")
+
+ref             := short-ref / long-ref
+short-ref       := "ref:" ns ":" ridpart ["#" ridfrag]
+long-ref        := "ref:" ns ":" rtype ":" ridpart ["#" ridfrag]
+ns              := ident
+rtype           := ident
+ridpart         := 1*(VCHAR - SP)
+ridfrag         := 1*(ALNUM / "_" / "-")
+deps-val        := ref *("," ref)
+ident           := 1*(LOWER / DIGIT / "_" / "-")
+```
+
+Notes:
+* `@deps` value uses `deps-val` (comma-separated refs, no spaces).
+* `ref` permits `#<rid>` fragments for record references.
+* Both `ref:<ns>:<id>` and `ref:<ns>:<type>:<id>` are valid.
+* Message identifiers in `ref:msg:<id>` may contain uppercase (e.g., ULID payload).
 
 ---
 
@@ -494,6 +539,20 @@ Inside `{...}`:
 
 Use `\n` (LF). For hashing, canonical bytes are UTF-8 with LF line endings.
 
+### 8.6 Hash Computation Rule (Non-Circular)
+
+When computing `@hash`, canonicalize the message with **`@hash` omitted** from the header block.
+
+Algorithm:
+
+1. Parse message.
+2. Remove `@hash` header if present.
+3. Canonicalize per §8.1–§8.5.
+4. Compute hash (recommended: SHA-256) over canonical UTF-8 bytes.
+5. Encode as `@hash ref:hash:sha256:<hex>`.
+
+Verification follows the same process: recompute from the message with `@hash` removed, then compare.
+
 ---
 
 ## 9. References (Message-Level and Record-Level)
@@ -534,18 +593,19 @@ PAIRL validators should support at least two modes:
 * **loose**: warnings for best-effort interoperability
 * **strict**: hard errors for production pipelines
 
-### V1 — No-New-Facts (Core)
+### V1 — No-New-Facts (Policy Rule)
 
-If enabled (via `#rule no_new_facts=true` or default strict policy):
+If enabled (via `#rule no_new_facts=true` or implementation policy):
 
-* Intent records must not introduce new factual material.
-* **Practical MVP checks (strict mode)**:
-   * Reject digits in intent values (`\d`)
-   * Reject `http://` or `https://` in intent values
-   * Reject long hex-like substrings (≥12 hex chars)
-   * Recommend moving them to `#fact` or `#ref`
+* Intent records should not introduce new factual material.
+* This is a **heuristic policy**, not a syntax rule.
+* Strict conformance mode should parse valid intent parameters (including `l=0..3`, `m=0`) and apply V1 as a separate policy check.
 
-(Heuristic by design; keep it simple and useful.)
+**Practical heuristic checks** (recommended):
+* Flag URLs (`http://`, `https://`) in intent values
+* Flag long hash-like substrings (>= 12 hex chars) in intent values
+* Optionally flag numeric values in non-standard keys (exclude known style keys such as `l`)
+* Recommend moving suspicious factual content to `#fact` or `#ref`
 
 ### V2 — Evidence Completeness
 
@@ -559,8 +619,11 @@ Every `#evid` must include:
 
 All refs must match:
 
-* `ref:<ns>:<type>:<id>` (at minimum)
+* Short form: `ref:<ns>:<id>`
+* Long form: `ref:<ns>:<type>:<id>`
+* Record reference form: either short or long ref with `#<rid>`
 * No spaces in the ref value.
+* `@deps` must be a comma-separated list of valid refs.
 
 ### V4 — Thread Integrity (Optional Strict)
 
