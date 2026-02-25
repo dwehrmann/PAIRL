@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-02-25
+
+### Added
+
+#### Tool-Use Compression
+- **Tool records**:
+  - `#call` — tool invocation record (tool name + key parameters)
+  - `#ret` — tool result summary (status + compressed results)
+  - `#think` — summarized reasoning step
+  - `#edit` — aggregated file edits (multiple edits collapsed)
+- **Validation rule V9**: Tool Chain Integrity
+  - `#ret` must reference valid `#call` RID via `call=` key
+  - Status must be `ok` or `err`
+  - Required keys enforced per record type
+- **Compression strategy guidance** (§7.6): recency window, edit aggregation, thinking removal
+
+#### Documentation
+- Section 7: Tool Records (§7.1–§7.6)
+- Appendix D: Tool-Use Compression Example
+- Example 06: Compressed tool-use session
+
+### Changed
+- Renumbered sections: §7 Values → §8, §8 Canon → §9, §9 Refs → §10, §10 Validation → §11, §11 Rendering → §12, §12 Errors → §13, §13 Versioning → §14, §14 Impl → §15
+- Updated record formatting list to include tool records (§9.4)
+- Updated error categories to include tool chain errors (§13.1)
+
+### Backward Compatibility
+- v1.2 is backward compatible with v1.1 and v1.0
+- v1.1 parsers can safely ignore tool records (unknown `#` records)
+- v1.2 parsers must accept v1.0/v1.1 messages without tool records
+
+---
+
 ## [1.1.0] - 2026-02-01
 
 ### Added
@@ -30,9 +63,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Appendix C: Economic Use Cases with complete examples
 
 ### Changed
-- Updated canonicalization order to include `@budget` and `@limit` (§8.1)
+- Updated canonicalization order to include `@budget` and `@limit` (§9.1)
 - Extended intent registry with economic intents (§4.2)
-- Updated error handling to include budget errors (§12.1)
+- Updated error handling to include budget errors (§13.1)
 
 ### Backward Compatibility
 - v1.1 is backward compatible with v1.0
@@ -77,8 +110,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **V7**: Circular dependency detection
 
 #### Canonicalization
-- Header canonical order (§7.1)
-- Intent arg normalization (§7.3)
+- Header canonical order (§9.1)
+- Intent arg normalization (§9.3)
 - Stable hashing for content-addressable storage
 - Deterministic diffs
 
@@ -98,22 +131,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v1.2
+### Planned for v1.3
 - `#meta` record type for structured metadata
 - `@priority` header for message prioritization
-- Enhanced validation rules for multi-agent workflows
-- Reference implementation in Python/TypeScript/Rust
+- Reference implementation in TypeScript/Rust
 
 ### Under Consideration
-- Compression hints for large message batches
 - Streaming support for long-running tasks
 - Multi-currency budget aggregation
 - Time-based quota enforcement
+- Dynamic recency window sizing for tool-use compression
 
 ---
 
 ## Version History Summary
 
+- **v1.2.0** (2026-02-25) — Tool-use compression (call, ret, think, edit)
 - **v1.1.0** (2026-02-01) — Economic features (budget, cost, quota)
 - **v1.0.0** (2026-01-31) — Initial stable release
 
@@ -158,6 +191,21 @@ req{t=task,s=f,l=2} @rid=a1
 #cost val=0.02 cur=USD @rid=c1
 #quota type=tokens used=5000 total=100000 @rid=q1
 ```
+
+### From v1.1 to v1.2
+
+**For Message Producers (Encoders)**:
+1. Use `#call` records to capture tool invocations with key parameters
+2. Use `#ret` records to summarize tool results (link via `call=<rid>`)
+3. Use `#think` records to preserve reasoning summaries
+4. Use `#edit` records to aggregate sequential file edits
+5. Apply recency window strategy: keep last W pairs as original messages
+
+**For Message Consumers (Parsers)**:
+1. Handle `#call`, `#ret`, `#think`, `#edit` records (or safely ignore them)
+2. Implement V9 validation rule if strict tool chain checking needed
+3. Note renumbered sections (§7+ shifted by 1)
+4. No breaking changes — all v1.0/v1.1 messages remain valid
 
 ---
 

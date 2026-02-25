@@ -8,7 +8,7 @@ This directory contains example PAIRL messages demonstrating various features an
 
 Each example includes:
 - **`.pairl`** file — the raw PAIRL message
-- **`.rendered.md`** file — human-readable rendering (see §10 in SPEC.md)
+- **`.rendered.md`** file — human-readable rendering (see §12 in SPEC.md)
 
 1. **[01-basic-request.pairl](01-basic-request.pairl)** | [Rendered](01-basic-request.rendered.md)
    - Simple request message
@@ -36,6 +36,13 @@ Each example includes:
    - Economic features (budget, cost, quota)
    - Demonstrates validation rules
 
+6. **[06-tool-use-session.pairl](06-tool-use-session.pairl)** | [Rendered](06-tool-use-session.rendered.md)
+   - Compressed tool-use conversation (v1.2)
+   - `#call`/`#ret` pairs for Read, Grep, Bash tools
+   - `#think` records for reasoning summaries
+   - `#edit` records for aggregated file changes
+   - Shows ~95% token reduction vs raw tool-use messages
+
 ---
 
 ## Understanding PAIRL Rendering
@@ -60,7 +67,7 @@ Agent A → [PAIRL message] → Agent B
 - Add context and formatting for clarity
 - **Never** add facts not in the original message
 
-See [SPEC.md §10](../SPEC.md) for full rendering guidelines.
+See [SPEC.md §12](../SPEC.md) for full rendering guidelines.
 
 ---
 
@@ -80,6 +87,7 @@ Every PAIRL message has:
    - Lossy intents: `req{...}`, `sum{...}`, etc.
    - Lossless facts: `#fact`, `#ref`, `#evid`, `#rule`
    - Economic data: `#cost`, `#quota`
+   - Tool records: `#call`, `#ret`, `#think`, `#edit`
 
 ### Intent Parameters
 
@@ -109,6 +117,8 @@ The examples form a coherent conversation:
   ↓ (summary of conversation)
 05-complex-report.pairl
   (comprehensive report with all features)
+06-tool-use-session.pairl
+  (compressed tool-use session)
 ```
 
 ---
@@ -120,12 +130,13 @@ The examples form a coherent conversation:
 1. Start with `01-basic-request.pairl` (simplest)
 2. Progress through `02`, `03`, `04` to see threading
 3. Study `05` for full feature set
+4. Study `06` for tool-use compression
 
 ### For Testing
 
 Reference implementations should:
 - Parse all examples without errors
-- Validate against rules V1-V8
+- Validate against rules V1-V9
 - Correctly canonicalize for hashing
 - Extract facts, refs, evidence accurately
 
@@ -160,7 +171,8 @@ python ../tools/validator.py 01-basic-request.pairl
 
 - Examples `01-04` are **v1.0 compatible** (no economic features)
 - Example `05` uses **v1.1 features** (@budget, #cost, #quota)
-- v1.0 parsers can read all examples (may ignore v1.1 fields)
+- Example `06` uses **v1.2 features** (#call, #ret, #think, #edit)
+- v1.0 parsers can read all examples (may ignore v1.1/v1.2 fields)
 
 ---
 

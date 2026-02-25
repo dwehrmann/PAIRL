@@ -1,19 +1,20 @@
-# PAIRL v1.1 — Protocol for Agent Intermediate Representation (Lite)
+# PAIRL v1.2 — Protocol for Agent Intermediate Representation (Lite)
 
 A compact, human-readable, machine-parseable agent-to-agent message format designed for:
 
 * **Token efficiency** (short records, pointers instead of copied context),
 * **Reliability** (lossless facts + evidence + validation),
 * **Economy** (native budget and quota management),
+* **Tool-use compression** (compact representation of tool-call/result chains),
 * **Interoperability** (works as payload anywhere; transport-agnostic),
 * **Human endpoints** (render to natural language only when needed).
 
 This spec defines:
 
 1. Message headers + stable IDs
-2. Records (lossy intents + lossless facts/refs/evidence + economic data)
+2. Records (lossy intents + lossless facts/refs/evidence + economic data + tool chains)
 3. Canonicalization (stable hashing, diff-friendly)
-4. Validation rules (anti-hallucination guardrails + budget compliance)
+4. Validation rules (anti-hallucination guardrails + budget compliance + tool chain integrity)
 5. Reference model for message- and record-level linking
 6. Error handling
 7. Versioning strategy
@@ -109,7 +110,7 @@ Header lines start with `@`.
 ### 2.4 Message ID Recommendations
 
 * Prefer **ULID** for `@mid` (sortable, collision-safe, 26 characters).
-* Prefer `@hash` = `sha256(canonical_message_bytes_without_@hash)` for immutability/audit (see §8.6).
+* Prefer `@hash` = `sha256(canonical_message_bytes_without_@hash)` for immutability/audit (see §9.6).
 * Using `@mid` only is acceptable; using `@mid` + `@hash` is best practice.
 
 ### 2.5 Timestamp Precision
@@ -126,7 +127,7 @@ Records appear after the empty line. One logical record per line.
 
 ### 3.1 Record Types
 
-PAIRL v1.1 defines:
+PAIRL v1.2 defines:
 
 **Lossy intent records**
 * `intent{...}` optionally suffixed with `@rid=...`
@@ -140,6 +141,12 @@ PAIRL v1.1 defines:
 **Economic records (v1.1)**
 * `#cost val=<float> cur=<unit> [model=<id>]`
 * `#quota type=<unit> total=<float> [used=<float>] [rem=<float>]`
+
+**Tool records (v1.2)**
+* `#call tool=<name> [params...]`
+* `#ret call=<rid> status=<ok|err> [results...]`
+* `#think summary="..."`
+* `#edit file="..." changes=<int> [summary="..."]`
 
 All records may optionally include `@rid=<rid>` at the end.
 
@@ -189,7 +196,7 @@ Parameters are comma-separated `k=v`.
 * `fmt` — formatting hint: `par|bul|num`
    * `par` paragraphs, `bul` bullets, `num` numbered list
 
-**Canonical key order** (see §8.3): `t,s,l,m,a,u,fmt`
+**Canonical key order** (see §9.3): `t,s,l,m,a,u,fmt`
 
 ### 4.1.1 Language Handling (Deliberate Omission)
 
@@ -199,7 +206,7 @@ Traditional protocols often tag content with language identifiers (e.g., `lang=d
 
 1. **Agent capability**: Modern LLMs are natively multilingual. Agent-to-agent communication does not require language tagging - agents understand content regardless of source language.
 
-2. **Rendering concern, not protocol concern**: Language selection is a human-endpoint decision. When rendering PAIRL to natural language (§10), the renderer selects the appropriate output language based on user preference, not based on tags in the message.
+2. **Rendering concern, not protocol concern**: Language selection is a human-endpoint decision. When rendering PAIRL to natural language (§12), the renderer selects the appropriate output language based on user preference, not based on tags in the message.
 
 3. **Lossless channel is language-agnostic**: Facts, references, and evidence (`#fact`, `#ref`, `#evid`) encode language-neutral information (IDs, numbers, URLs, structured claims). When claims contain natural language, the language is implicit in the content itself.
 
@@ -291,7 +298,7 @@ You can extend this registry in your implementation, but v1.1 commonly includes:
 
 **Rules**:
 * `key` matches `[a-z][a-z0-9_]{0,31}`
-* `value` is an atom or a quoted string (see §6).
+* `value` is an atom or a quoted string (see §8).
 * Facts must be treated as authoritative by decoders/renderers.
 * Use facts for: numbers, names, IDs, dates, URLs, amounts, locations, exact terms.
 
@@ -421,9 +428,173 @@ Format:
 
 ---
 
-## 7. Values and Quoting
+## 7. Tool Records (v1.2)
 
-### 7.1 Atoms
+Tool records capture **tool-use conversation history** in compressed form. In agentic workflows (Claude Code, Cursor, multi-agent systems), tools are invoked repeatedly — reading files, searching code, editing files, running commands. The raw tool-call/result messages consume 60-80% of context tokens, mostly from file contents and command output that are read-once.
+
+Tool records compress this history into structured summaries while preserving the **decision chain**: what was called, what came back, and what reasoning led to the next action.
+
+### 7.1 `#call` — Tool Invocation Record
+
+Records a completed tool invocation with its key parameters.
+
+Format:
+
+```
+#call tool=<name> [key=value ...] [@rid=...]
+```
+
+**Required keys**:
+* `tool` — tool name (e.g., `Read`, `Grep`, `Edit`, `Bash`, `Glob`, `Write`)
+
+**Optional keys**: Tool-specific parameters as additional key-value pairs. Encoders should include parameters that are essential for understanding the action (file paths, search patterns, commands) and omit verbose content (full file bodies, large outputs).
+
+**Examples**:
+
+```
+#call tool=Read file="/src/app.ts" @rid=c01
+#call tool=Grep pattern="handleProxy" path="/src/" @rid=c02
+#call tool=Edit file="/src/proxy.ts" @rid=c03
+#call tool=Bash cmd="npm test" @rid=c04
+#call tool=Glob pattern="**/*.ts" @rid=c05
+```
+
+### 7.2 `#ret` — Tool Result Record
+
+Records the compressed result of a tool invocation.
+
+Format:
+
+```
+#ret call=<rid> status=<ok|err> [key=value ...] [@rid=...]
+```
+
+**Required keys**:
+* `call` — RID of the corresponding `#call` record (back-reference)
+* `status` — `ok` (success) or `err` (failure)
+
+**Optional keys**: Result-specific summary data. Common patterns:
+
+* `lines=<int>` — line count of file/output
+* `matches=<int>` — number of search matches
+* `files="<list>"` — matching files with locations
+* `sig="<summary>"` — one-line content signature
+* `summary="<text>"` — brief result description
+* `exit=<int>` — command exit code
+* `err="<text>"` — error message (when `status=err`)
+
+**Examples**:
+
+```
+#ret call=c01 status=ok lines=450 sig="Hono HTTP app: auth middleware, proxy routes, billing" @rid=r01
+#ret call=c02 status=ok matches=3 files="proxy.ts:161,proxy.ts:234,app.ts:558" @rid=r02
+#ret call=c03 status=ok @rid=r03
+#ret call=c04 status=ok summary="42 passed, 0 failed" exit=0 @rid=r04
+#ret call=c05 status=ok matches=23 sig="TypeScript source files across src/ and lib/" @rid=r05
+#ret call=c06 status=err err="File not found: /src/missing.ts" @rid=r06
+```
+
+**Linking**: `#ret` references its `#call` via the `call=` key, NOT by sharing the same `@rid`. This preserves V6 (RID uniqueness within a message).
+
+### 7.3 `#think` — Reasoning Summary Record
+
+Records a summarized reasoning step. In tool-use conversations, extended thinking blocks consume 15-20% of tokens but are irrelevant for subsequent turns. `#think` captures the essential decision in one line.
+
+Format:
+
+```
+#think summary="<text>" [@rid=...]
+```
+
+**Required keys**:
+* `summary` — quoted string describing the reasoning step
+
+**Examples**:
+
+```
+#think summary="analyzed proxy code, identified SSE header stripping issue" @rid=t01
+#think summary="file structure suggests monorepo with shared types package" @rid=t02
+#think summary="test failures caused by missing env var, not code bug" @rid=t03
+```
+
+### 7.4 `#edit` — Aggregated Edit Record
+
+Records multiple sequential edits to the same file, collapsed into a single summary. When an encoder detects repeated Edit→Read→Edit→Read cycles on the same file, it can aggregate them.
+
+Format:
+
+```
+#edit file=<path> changes=<int> [summary="<text>"] [@rid=...]
+```
+
+**Required keys**:
+* `file` — file path (quoted if contains spaces)
+* `changes` — positive integer, number of individual edits aggregated
+
+**Optional keys**:
+* `summary` — quoted string describing the aggregate changes
+
+**Examples**:
+
+```
+#edit file="/src/proxy.ts" changes=3 summary="added transfer-encoding strip, fixed SSE headers, added tool-use passthrough" @rid=d01
+#edit file="/src/auth.ts" changes=5 summary="refactored session handling, added JWT validation" @rid=d02
+#edit file="/tests/proxy.test.ts" changes=2 summary="added SSE streaming tests" @rid=d03
+```
+
+### 7.5 Tool Chain Ordering
+
+Tool records should appear in **chronological order** within the message body. A typical compressed session reads top-to-bottom as a narrative:
+
+```
+#think summary="need to find the proxy implementation" @rid=t01
+#call tool=Grep pattern="handleProxy" path="/src/" @rid=c01
+#ret  call=c01 status=ok matches=3 files="proxy.ts:161,proxy.ts:234,app.ts:558" @rid=r01
+#call tool=Read file="/src/proxy.ts" @rid=c02
+#ret  call=c02 status=ok lines=450 sig="proxy handler with SSE support" @rid=r02
+#think summary="SSE headers being stripped by content-encoding logic" @rid=t02
+#edit file="/src/proxy.ts" changes=2 summary="fixed SSE header stripping, added transfer-encoding handling" @rid=d01
+#call tool=Bash cmd="npm test" @rid=c03
+#ret  call=c03 status=ok summary="42 passed, 0 failed" exit=0 @rid=r03
+```
+
+### 7.6 Compression Strategy (Encoder Guidance)
+
+This section provides guidance for encoders compressing tool-use conversations. These are **recommendations**, not protocol requirements.
+
+**Recency Window**: Encoders should preserve the last W tool-use/tool-result message pairs as **original messages** (not compressed to records). Default W=3. This allows the model to:
+* Maintain tool_use_id chains for continued tool calls
+* Access concrete results from recent actions
+* Continue the workflow without re-reading
+
+**Older Pairs**: Tool interactions older than the recency window are compressed to `#call`/`#ret` records. The compression is lossy on content but lossless on structure.
+
+**Thinking Blocks**: Extended thinking (`type: "thinking"`) should be:
+* Within recency window: removed entirely (model just produced them)
+* Older: compressed to `#think` records or removed
+
+**Redundant Reads**: If the same file is read multiple times (e.g., after edits), only the last read's full result needs to be preserved. Earlier reads become `#call`/`#ret` records.
+
+**Edit Aggregation**: Sequential edits to the same file within a turn should be aggregated into `#edit` records.
+
+**Compressed Message Structure** (recommended):
+
+```
+Message 1 (system):    Original system prompt
+Message 2 (user):      [PAIRL v1.2 Context]
+                        <intent records>
+                        <fact records>
+                        <tool chain records>
+Message 3 (assistant):  Understood.
+Message 4+ (original):  Last W tool_use/tool_result pairs (verbatim)
+Message N (user/asst):  Last message in conversation
+```
+
+---
+
+## 8. Values and Quoting
+
+### 8.1 Atoms
 
 An atom is a value without spaces or special characters.
 
@@ -431,7 +602,7 @@ An atom is a value without spaces or special characters.
 
 **Examples**: `spec_document`, `pdf_or_link`, `2026-02-05`, `high`, `ref:doc:sha256:...`, `0.05USD`
 
-### 7.2 Quoted Strings
+### 8.2 Quoted Strings
 
 Use double quotes when values contain spaces or special characters:
 
@@ -448,7 +619,7 @@ Use double quotes when values contain spaces or special characters:
 #cost note="includes both analysis and summarization"
 ```
 
-### 7.3 Minimal Grammar (Conformance Baseline)
+### 8.3 Minimal Grammar (Conformance Baseline)
 
 The grammar below defines the minimum syntax strict parsers should accept.
 
@@ -492,7 +663,7 @@ Notes:
 
 ---
 
-## 8. Canonicalization (for Stable Hashing & Diff)
+## 9. Canonicalization (for Stable Hashing & Diff)
 
 Canonicalization produces the canonical message used for:
 
@@ -500,7 +671,7 @@ Canonicalization produces the canonical message used for:
 * deterministic diffs
 * caching/dedup
 
-### 8.1 Header Canonical Order
+### 9.1 Header Canonical Order
 
 Headers must appear in this order if present:
 
@@ -514,11 +685,11 @@ Headers must appear in this order if present:
 8. `@limit` (v1.1)
 9. `@hash`
 
-### 8.2 Blank Line Rule
+### 9.2 Blank Line Rule
 
 Exactly one empty line between header and body.
 
-### 8.3 Intent Arg Normalization
+### 9.3 Intent Arg Normalization
 
 Inside `{...}`:
 
@@ -527,19 +698,19 @@ Inside `{...}`:
 * Order keys by: `t,s,l,m,a,u,fmt`
 * Unknown keys (if allowed) come after known keys, sorted lexicographically
 
-### 8.4 Record Formatting
+### 9.4 Record Formatting
 
 * One record per line.
 * Exactly one space before `@rid=...` if present.
-* `#fact/#ref/#evid/#rule/#cost/#quota` fields use a single space between tokens:
+* `#fact/#ref/#evid/#rule/#cost/#quota/#call/#ret/#think/#edit` fields use a single space between tokens:
    * `#fact key=value @rid=f1` (rid optional)
    * `#cost val=0.02 cur=USD @rid=c1`
 
-### 8.5 Line Endings
+### 9.5 Line Endings
 
 Use `\n` (LF). For hashing, canonical bytes are UTF-8 with LF line endings.
 
-### 8.6 Hash Computation Rule (Non-Circular)
+### 9.6 Hash Computation Rule (Non-Circular)
 
 When computing `@hash`, canonicalize the message with **`@hash` omitted** from the header block.
 
@@ -547,7 +718,7 @@ Algorithm:
 
 1. Parse message.
 2. Remove `@hash` header if present.
-3. Canonicalize per §8.1–§8.5.
+3. Canonicalize per §9.1–§9.5.
 4. Compute hash (recommended: SHA-256) over canonical UTF-8 bytes.
 5. Encode as `@hash ref:hash:sha256:<hex>`.
 
@@ -555,15 +726,15 @@ Verification follows the same process: recompute from the message with `@hash` r
 
 ---
 
-## 9. References (Message-Level and Record-Level)
+## 10. References (Message-Level and Record-Level)
 
-### 9.1 Message References
+### 10.1 Message References
 
 A message is referenceable as:
 
 * `ref:msg:<mid>`
 
-### 9.2 Record References
+### 10.2 Record References
 
 A record is referenceable as:
 
@@ -575,18 +746,18 @@ A record is referenceable as:
 #ref reply_to=ref:msg:01JH0Q6Z7F...#a2
 ```
 
-### 9.3 Reference Resolution
+### 10.3 Reference Resolution
 
 **PAIRL does not define a resolution protocol.** Reference resolution is a **transport-layer concern** or an **application-layer concern**.
 
 **Implications**:
 * PAIRL messages containing `ref:` pointers are valid even if refs cannot be resolved.
 * Applications using PAIRL must implement their own ref resolution strategy (e.g., local store, distributed hash table, URL fetch).
-* Unresolvable refs should be handled gracefully (see §12 Error Handling).
+* Unresolvable refs should be handled gracefully (see §13 Error Handling).
 
 ---
 
-## 10. Validation Rules (v1.1)
+## 11. Validation Rules (v1.2)
 
 PAIRL validators should support at least two modes:
 
@@ -677,9 +848,24 @@ bid{t=analysis,s=f,l=1} @rid=a1
 #fact wait_for_approval=true @rid=f1
 ```
 
+### V9 — Tool Chain Integrity (v1.2)
+
+If tool records are present:
+
+* Every `#ret` must have a `call=` key whose value matches the `@rid` of a `#call` record in the same message.
+* `#ret` `status` must be `ok` or `err`.
+* `#call` without a matching `#ret` is valid (represents in-progress or result-stripped calls).
+* `#edit` `changes` value must be a positive integer.
+* `#think` must have a `summary=` key.
+
+**Error behavior**:
+* Orphaned `#ret` (no matching `#call`): error in strict mode, warning in loose mode.
+* Invalid `status` value: error.
+* Missing required keys (`tool` on `#call`, `call`/`status` on `#ret`, `file`/`changes` on `#edit`, `summary` on `#think`): error.
+
 ---
 
-## 11. Rendering Guideline (Human Endpoint)
+## 12. Rendering Guideline (Human Endpoint)
 
 PAIRL is not primarily a natural language format. **Rendering is a separate step.**
 
@@ -698,25 +884,26 @@ PAIRL is not primarily a natural language format. **Rendering is a separate step
 
 ---
 
-## 12. Error Handling
+## 13. Error Handling
 
-### 12.1 Error Categories
+### 13.1 Error Categories
 
 PAIRL implementations should define error handling for:
 
 1. **Syntax errors**: malformed headers, invalid record format
-2. **Validation errors**: violation of rules V1-V8
+2. **Validation errors**: violation of rules V1-V9
 3. **Resolution errors**: unresolvable `ref:` pointers
 4. **Integrity errors**: hash mismatches, circular dependencies
 5. **Budget errors** (v1.1): budget exceeded, invalid currency codes
+6. **Tool chain errors** (v1.2): orphaned `#ret` records, missing required keys on tool records
 
-### 12.2 Error Modes
+### 13.2 Error Modes
 
 * **Strict mode**: halt processing on any error
 * **Loose mode**: log warnings, attempt best-effort parsing
 * **Partial parsing**: if enabled, extract valid records even from partially malformed messages
 
-### 12.3 Recommended Error Behavior
+### 13.3 Recommended Error Behavior
 
 * **Missing required headers** (`@v`, `@mid`, `@ts`): hard error
 * **Malformed records**: skip record, log warning (loose mode) or error (strict mode)
@@ -724,8 +911,10 @@ PAIRL implementations should define error handling for:
 * **Hash mismatch**: hard error (integrity violation)
 * **RID collision**: hard error (ambiguous references)
 * **Budget exceeded** (v1.1): log warning, expect `ref` or `bid` intent from agent
+* **Orphaned `#ret`** (v1.2): error in strict mode, warning in loose mode
+* **Missing tool record keys** (v1.2): error
 
-### 12.4 Error Reporting
+### 13.4 Error Reporting
 
 Implementations should provide structured error output including:
 
@@ -736,21 +925,21 @@ Implementations should provide structured error output including:
 
 ---
 
-## 13. Versioning Strategy
+## 14. Versioning Strategy
 
-### 13.1 Protocol Versioning
+### 14.1 Protocol Versioning
 
 * PAIRL uses semantic versioning: `MAJOR.MINOR.PATCH`
 * Current version: **1.1**
 * `@v` header contains **major version only**
 
-### 13.2 Version Compatibility
+### 14.2 Version Compatibility
 
 * **Backward compatibility**: v1.x parsers should accept v1.0 messages
 * **Forward compatibility**: v1.0 parsers may reject v1.1 messages or parse them in degraded mode (ignoring `@budget`, `#cost`, `#quota`)
 * **Breaking changes** require major version bump
 
-### 13.3 Extension Points
+### 14.3 Extension Points
 
 New versions may:
 
@@ -759,13 +948,13 @@ New versions may:
 * Change canonicalization rules (major version bump)
 * Add new validation rules (minor version bump if optional, major if required)
 
-### 13.4 Deprecation Policy
+### 14.4 Deprecation Policy
 
 * Deprecated features must be documented
 * Deprecation period: at least one major version
 * Example: if `#rule` format changes in v2.0, v1.x format is still supported in v2.x but deprecated
 
-### 13.5 v1.1 Changes
+### 14.5 v1.1 Changes
 
 v1.1 adds:
 
@@ -775,11 +964,20 @@ v1.1 adds:
 * Validation rule V8 (Budget Compliance)
 * **Backward compatible**: v1.0 parsers can ignore v1.1 extensions
 
+### 14.6 v1.2 Changes
+
+v1.2 adds:
+
+* Tool records: `#call`, `#ret`, `#think`, `#edit`
+* Validation rule V9 (Tool Chain Integrity)
+* Compression strategy guidance for tool-use conversations (§7.6)
+* **Backward compatible**: v1.1 parsers can ignore v1.2 tool records
+
 ---
 
-## 14. Implementation Recommendations
+## 15. Implementation Recommendations
 
-### 14.1 Message Size Limits
+### 15.1 Message Size Limits
 
 While PAIRL does not enforce limits, implementations should consider:
 
@@ -793,14 +991,14 @@ These can be signaled via `#rule`:
 #rule max_size_bytes=1048576
 ```
 
-### 14.2 Storage Considerations
+### 15.2 Storage Considerations
 
 * Messages should be stored immutably (append-only log)
 * `@hash` enables content-addressable storage
 * `@mid` (ULID) enables time-ordered indexing
 * Economic data (`#cost`, `#quota`) enables cost accounting and auditing
 
-### 14.3 Transport Agnostic
+### 15.3 Transport Agnostic
 
 PAIRL messages can be transmitted via:
 
@@ -810,7 +1008,7 @@ PAIRL messages can be transmitted via:
 * WebSocket frame
 * Embedded in larger document
 
-### 14.4 Economic Integration (v1.1)
+### 15.4 Economic Integration (v1.1)
 
 Implementations should consider:
 
@@ -924,4 +1122,36 @@ ref{t=research,m=-} @rid=a1
 
 ---
 
-**End of PAIRL v1.1 Specification**
+## Appendix D: Tool-Use Compression Example (v1.2)
+
+A compressed Claude Code session where an agent fixed SSE header handling in a proxy service:
+
+```
+@v 1
+@mid ref:msg:01JK9M2A3B4C5D6E7F8G9H0I1J2K
+@ts 2026-02-25T14:30:00.000+01:00
+@parent ref:msg:01JK9M1Z2A3B4C5D6E7F8G9H0I1J
+
+upd{t=proxy_fix,s=t,l=2,m=+,a=i} @rid=a1
+#fact task="fix SSE header stripping in proxy service" @rid=f1
+#fact status=completed @rid=f2
+#fact tests_passed=42 @rid=f3
+#think summary="need to find the proxy implementation" @rid=t01
+#call tool=Grep pattern="handleProxy" path="/src/" @rid=c01
+#ret  call=c01 status=ok matches=3 files="proxy.ts:161,proxy.ts:234,app.ts:558" @rid=r01
+#call tool=Read file="/src/proxy.ts" @rid=c02
+#ret  call=c02 status=ok lines=450 sig="proxy handler with SSE support, content-encoding logic" @rid=r02
+#think summary="SSE headers being stripped by content-encoding normalization" @rid=t02
+#call tool=Read file="/src/app.ts" @rid=c03
+#ret  call=c03 status=ok lines=320 sig="Hono HTTP app: auth middleware, proxy routes, billing endpoints" @rid=r03
+#edit file="/src/proxy.ts" changes=2 summary="skip content-encoding strip for SSE, preserve transfer-encoding" @rid=d01
+#call tool=Bash cmd="npm test" @rid=c04
+#ret  call=c04 status=ok summary="42 passed, 0 failed" exit=0 @rid=r04
+#cost val=0.03 cur=USD model=claude-opus-4 @rid=k1
+```
+
+This represents ~20 turns of tool-use conversation (file reads, searches, edits, test runs) compressed to 18 records. The original conversation would have consumed ~15,000 tokens; the PAIRL representation uses ~800 tokens (~95% reduction).
+
+---
+
+**End of PAIRL v1.2 Specification**

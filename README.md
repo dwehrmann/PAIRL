@@ -1,6 +1,6 @@
 # PAIRL — Protocol for Agent Intermediate Representation (Lite)
 
-**Version 1.1** | [Specification](SPEC.md) | [Examples](examples/) | [Contributing](CONTRIBUTING.md) | [Website](https://pairl.dev)
+**Version 1.2** | [Specification](SPEC.md) | [Examples](examples/) | [Contributing](CONTRIBUTING.md) | [Website](https://pairl.dev)
 
 ---
 
@@ -13,6 +13,7 @@ Instead of verbose natural language between AI agents, PAIRL uses:
 * **Two channels**: lossy intents (style/mood) + lossless facts (names, numbers, evidence)
 * **Pointer-first state**: references instead of copying large content
 * **Token efficiency**: 70-90% reduction vs natural language
+* **Tool-use compression** (v1.2): compact encoding of tool-call/result chains (~95% reduction)
 * **Economic features** (v1.1): native budget tracking, cost reporting, quota management
 * **Anti-hallucination guardrails**: strict separation of facts from style
 * **Transport-agnostic**: works anywhere (HTTP, files, message queues, WebSocket)
@@ -109,12 +110,20 @@ Messages form a DAG (directed acyclic graph):
 * **Quota management**: `#quota type=tokens total=100000 used=5000` tracks resource usage
 * **Bidding**: agents propose resource needs before execution
 
+### 6. Tool-Use Compression (v1.2)
+
+* **Tool calls**: `#call tool=Read file="/src/app.ts"` records tool invocations
+* **Tool results**: `#ret call=c01 status=ok lines=450 sig="..."` summarizes results
+* **Reasoning**: `#think summary="identified root cause"` captures decision chain
+* **Edit aggregation**: `#edit file="/src/proxy.ts" changes=3 summary="..."` collapses edits
+
 ---
 
 ## Use Cases
 
 * **Multi-agent systems**: agents exchanging context/results
 * **LLM pipelines**: research → analysis → writing
+* **Tool-use conversations**: Claude Code, Cursor, agentic workflows
 * **Agent logging/debugging**: compact audit trails
 * **Human-in-the-loop**: review agent reasoning before execution
 * **Agentic APIs**: structured requests/responses
@@ -144,16 +153,17 @@ See [examples/](examples/) for:
 * TypeScript library
 * Rust validator
 
-**Integration**: PAIRL works as payload in any system (see §13.3 in SPEC.md)
+**Integration**: PAIRL works as payload in any system (see §15.3 in SPEC.md)
 
 ---
 
 ## Project Status
 
-**Current version**: 1.1 (February 2026)
+**Current version**: 1.2 (February 2026)
 
 * Core spec stabilized (v1.0)
 * Economic features added (v1.1)
+* Tool-use compression added (v1.2)
 * Python validator available (tools/validator.py)
 * Reference implementations in progress
 * Community feedback welcome

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PAIRL v1.1 Validator
+PAIRL v1.2 Validator
 
 Reference validator for PAIRL message syntax and core validation rules.
 Policy checks (for example V1 no-new-facts heuristics) are reported separately.
@@ -25,6 +25,7 @@ KV_TOKEN_PATTERN = re.compile(r"\b([a-z][a-z0-9_]*)=([^\s]+)")
 EVID_CONF_PATTERN = re.compile(r"\bconf=([0-9]+(?:\.[0-9]+)?)\b")
 BUDGET_PATTERN = re.compile(r"^([0-9]+(?:\.[0-9]+)?)([A-Za-z]{1,16})$")
 KNOWN_INTENT_NUMERIC_KEYS = {"l", "m"}
+TOOL_RECORD_PREFIXES = ("#call ", "#ret ", "#think ", "#edit ")
 
 
 def split_ref(ref_value: str) -> Tuple[str, Optional[str]]:
@@ -112,6 +113,9 @@ class PAIRLMessage:
             if record.startswith("#rule ") and f"{rule_name}=true" in record:
                 return True
         return False
+
+    def _is_tool_record(self, record: str) -> bool:
+        return any(record.startswith(prefix) for prefix in TOOL_RECORD_PREFIXES)
 
     def validate_required_headers(self) -> bool:
         required = ["v", "mid", "ts"]
@@ -281,6 +285,63 @@ class PAIRLMessage:
                     passed = False
         return passed
 
+    def validate_tool_records(self, strict: bool = False) -> bool:
+        """V9: Validate tool records (#call, #ret, #think, #edit)."""
+        passed = True
+
+        # Collect #call RIDs for back-reference validation
+        call_rids: Set[str] = set()
+        for record in self.records:
+            if record.startswith("#call "):
+                tokens = dict(KV_TOKEN_PATTERN.findall(record))
+                if "tool" not in tokens:
+                    self.errors.append(f"#call missing required key 'tool': {record}")
+                    passed = False
+                rid_match = RID_PATTERN.search(record)
+                if rid_match:
+                    call_rids.add(rid_match.group(1).lower())
+
+        for record in self.records:
+            if record.startswith("#ret "):
+                tokens = dict(KV_TOKEN_PATTERN.findall(record))
+                if "call" not in tokens:
+                    self.errors.append(f"#ret missing required key 'call': {record}")
+                    passed = False
+                elif tokens["call"].lower() not in call_rids:
+                    msg = f"#ret references unknown call RID '{tokens['call']}': {record}"
+                    if strict:
+                        self.errors.append(msg)
+                        passed = False
+                    else:
+                        self.warnings.append(msg)
+                if "status" not in tokens:
+                    self.errors.append(f"#ret missing required key 'status': {record}")
+                    passed = False
+                elif tokens["status"] not in ("ok", "err"):
+                    self.errors.append(f"#ret status must be 'ok' or 'err': {record}")
+                    passed = False
+
+            elif record.startswith("#think "):
+                tokens = dict(KV_TOKEN_PATTERN.findall(record))
+                # summary is a quoted value, so KV_TOKEN_PATTERN may not catch it
+                if "summary=" not in record:
+                    self.errors.append(f"#think missing required key 'summary': {record}")
+                    passed = False
+
+            elif record.startswith("#edit "):
+                tokens = dict(KV_TOKEN_PATTERN.findall(record))
+                if "file=" not in record:
+                    self.errors.append(f"#edit missing required key 'file': {record}")
+                    passed = False
+                if "changes" not in tokens:
+                    self.errors.append(f"#edit missing required key 'changes': {record}")
+                    passed = False
+                elif not tokens["changes"].isdigit() or int(tokens["changes"]) < 1:
+                    self.errors.append(f"#edit 'changes' must be a positive integer: {record}")
+                    passed = False
+
+        return passed
+
     def validate_budget(self, projected_cost: Optional[float] = None) -> Tuple[bool, str]:
         """V8: Budget format and simple cost-overrun check."""
         if "budget" not in self.headers:
@@ -326,9 +387,24 @@ class PAIRLMessage:
         self.validate_refs()
         self.validate_rid_uniqueness()
         self.validate_cost_and_quota()
+        self.validate_tool_records(strict)
         self.validate_budget()
 
         return len(self.errors) == 0
+
+    def _count_tool_records(self) -> Dict[str, int]:
+        """Count tool record types for reporting."""
+        counts: Dict[str, int] = {"call": 0, "ret": 0, "think": 0, "edit": 0}
+        for record in self.records:
+            if record.startswith("#call "):
+                counts["call"] += 1
+            elif record.startswith("#ret "):
+                counts["ret"] += 1
+            elif record.startswith("#think "):
+                counts["think"] += 1
+            elif record.startswith("#edit "):
+                counts["edit"] += 1
+        return counts
 
 
 def main() -> None:
@@ -386,6 +462,11 @@ def main() -> None:
     print(f"  Records: {len(msg.records)}")
     if "budget" in msg.headers:
         print(f"  Budget: {msg.headers['budget']}")
+
+    tool_counts = msg._count_tool_records()
+    if any(tool_counts.values()):
+        parts = [f"{v} {k}" for k, v in tool_counts.items() if v > 0]
+        print(f"  Tool records: {', '.join(parts)}")
 
     sys.exit(0 if valid else 1)
 
