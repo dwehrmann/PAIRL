@@ -136,7 +136,7 @@ Commercial use is permitted under Apache 2.0 (see [LICENSE](LICENSE)).
 
 ### 1. Read the Spec
 
-Start with [SPEC.md](SPEC.md) for the complete v1.1 specification.
+Start with [SPEC.md](SPEC.md) for the complete v1.2 specification.
 
 ### 2. Explore Examples
 
