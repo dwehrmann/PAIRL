@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.1] - 2026-02-27
+
+### Fixed
+
+#### State Token (#s) Placement and Extraction
+- **#s position**: Moved from "after facts, before tool records" to **after tool records**. Preserves chronological reading order so models read completed actions first, then the resulting state — prevents action loops where models see "done" before the actions that led to it.
+- **#s extraction scope**: Encoders MUST only extract `#s` from the **old (compressed) region**, not from the recency window. If the most recent `#s` is in the recent region, it already appears in preserved messages. Double-injection caused models to repeat completed actions (e.g., deploying multiple times).
+
+### Changed
+- §7.5 Semantics: Updated placement rule and added extraction scope requirement
+- §7.6 Example: Removed inline intermediate `#s` tokens, kept only final `#s done` at end of tool chain, added clarifying note
+- Appendix D: Moved `#s done` from before tool records to after them
+
+---
+
 ## [1.2.0] - 2026-02-25
 
 ### Added
@@ -153,6 +168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **v1.2.1** (2026-02-27) — Fix #s state token placement and extraction scope (action loop prevention)
 - **v1.2.0** (2026-02-25) — Tool-use compression (call, ret, think, edit) + state tokens (#s)
 - **v1.1.0** (2026-02-01) — Economic features (budget, cost, quota)
 - **v1.0.0** (2026-01-31) — Initial stable release
