@@ -573,7 +573,8 @@ Format:
 **Semantics**:
 * Only the **most recent** `#s` token survives compression. Earlier state tokens are discarded.
 * `#s` records do not require `@rid` (they are ephemeral, not referenceable).
-* Encoders extract `#s` from assistant message text and emit it as a standalone record in the PAIRL body, positioned after facts and before tool chain records.
+* Encoders extract `#s` from assistant message text and emit it as a standalone record in the PAIRL body, positioned **after tool chain records** (at the end of the compressed section). This preserves chronological reading order: the model reads what actions were taken, then sees the resulting state.
+* Encoders MUST only extract `#s` from the **old (compressed) region**, not from the recency window. If the most recent `#s` token is in the recent region, it already appears naturally in the preserved messages — injecting it again into the compressed body causes double-injection and can lead to action loops (e.g., models repeating completed deploys).
 * The model emits `#s` tokens inline in its response text; encoders are responsible for extracting and preserving them.
 
 ### 7.6 Tool Chain Ordering
@@ -581,19 +582,19 @@ Format:
 Tool records should appear in **chronological order** within the message body. A typical compressed session reads top-to-bottom as a narrative:
 
 ```
-#s explore:0/3
 #think summary="need to find the proxy implementation" @rid=t01
 #call tool=Grep pattern="handleProxy" path="/src/" @rid=c01
 #ret  call=c01 status=ok matches=3 files="proxy.ts:161,proxy.ts:234,app.ts:558" @rid=r01
 #call tool=Read file="/src/proxy.ts" @rid=c02
 #ret  call=c02 status=ok lines=450 sig="proxy handler with SSE support" @rid=r02
-#s ready:edit
 #think summary="SSE headers being stripped by content-encoding logic" @rid=t02
 #edit file="/src/proxy.ts" changes=2 summary="fixed SSE header stripping, added transfer-encoding handling" @rid=d01
 #call tool=Bash cmd="npm test" @rid=c03
 #ret  call=c03 status=ok summary="42 passed, 0 failed" exit=0 @rid=r03
 #s done
 ```
+
+Note: Only the **last** `#s` token survives compression (see §7.5). It is placed at the end of the tool chain, after all `#call`/`#ret`/`#edit` records. This ensures the model reads actions first, then the resulting state — preventing action loops where the model sees "done" before the actions that made it so.
 
 ### 7.7 Compression Strategy (Encoder Guidance)
 
@@ -1187,7 +1188,6 @@ upd{t=proxy_fix,s=t,l=2,m=+,a=i} @rid=a1
 #fact task="fix SSE header stripping in proxy service" @rid=f1
 #fact status=completed @rid=f2
 #fact tests_passed=42 @rid=f3
-#s done
 #think summary="need to find the proxy implementation" @rid=t01
 #call tool=Grep pattern="handleProxy" path="/src/" @rid=c01
 #ret  call=c01 status=ok matches=3 files="proxy.ts:161,proxy.ts:234,app.ts:558" @rid=r01
@@ -1199,6 +1199,7 @@ upd{t=proxy_fix,s=t,l=2,m=+,a=i} @rid=a1
 #edit file="/src/proxy.ts" changes=2 summary="skip content-encoding strip for SSE, preserve transfer-encoding" @rid=d01
 #call tool=Bash cmd="npm test" @rid=c04
 #ret  call=c04 status=ok summary="42 passed, 0 failed" exit=0 @rid=r04
+#s done
 #cost val=0.03 cur=USD model=claude-opus-4 @rid=k1
 ```
 
