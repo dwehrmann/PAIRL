@@ -147,6 +147,7 @@ PAIRL v1.2 defines:
 * `#ret call=<rid> status=<ok|err> [results...]`
 * `#think summary="..."`
 * `#edit file="..." changes=<int> [summary="..."]`
+* `#s <phase>:<progress>` — agent cognitive state (no `@rid` required)
 
 All records may optionally include `@rid=<rid>` at the end.
 
@@ -542,23 +543,59 @@ Format:
 #edit file="/tests/proxy.test.ts" changes=2 summary="added SSE streaming tests" @rid=d03
 ```
 
-### 7.5 Tool Chain Ordering
+### 7.5 `#s` — State Token Record
+
+Records the agent's current cognitive phase. When agentic conversations are compressed, the model's internal state (what it has decided, whether it's ready to act) gets lost. The `#s` token preserves this state so the model can resume without re-analyzing.
+
+Format:
+
+```
+#s <phase>:<progress>
+```
+
+**Phase values**:
+* `explore` — researching, reading files, gathering context
+* `ready` — enough context collected, will act next
+* `exec` — implementing changes
+* `done` — task finished
+
+**Progress** (optional): a ratio indicating how far along the phase is (e.g., `3/6` files read, `2/4` edits made).
+
+**Examples**:
+
+```
+#s explore:3/6
+#s ready:edit
+#s exec:2/4
+#s done
+```
+
+**Semantics**:
+* Only the **most recent** `#s` token survives compression. Earlier state tokens are discarded.
+* `#s` records do not require `@rid` (they are ephemeral, not referenceable).
+* Encoders extract `#s` from assistant message text and emit it as a standalone record in the PAIRL body, positioned after facts and before tool chain records.
+* The model emits `#s` tokens inline in its response text; encoders are responsible for extracting and preserving them.
+
+### 7.6 Tool Chain Ordering
 
 Tool records should appear in **chronological order** within the message body. A typical compressed session reads top-to-bottom as a narrative:
 
 ```
+#s explore:0/3
 #think summary="need to find the proxy implementation" @rid=t01
 #call tool=Grep pattern="handleProxy" path="/src/" @rid=c01
 #ret  call=c01 status=ok matches=3 files="proxy.ts:161,proxy.ts:234,app.ts:558" @rid=r01
 #call tool=Read file="/src/proxy.ts" @rid=c02
 #ret  call=c02 status=ok lines=450 sig="proxy handler with SSE support" @rid=r02
+#s ready:edit
 #think summary="SSE headers being stripped by content-encoding logic" @rid=t02
 #edit file="/src/proxy.ts" changes=2 summary="fixed SSE header stripping, added transfer-encoding handling" @rid=d01
 #call tool=Bash cmd="npm test" @rid=c03
 #ret  call=c03 status=ok summary="42 passed, 0 failed" exit=0 @rid=r03
+#s done
 ```
 
-### 7.6 Compression Strategy (Encoder Guidance)
+### 7.7 Compression Strategy (Encoder Guidance)
 
 This section provides guidance for encoders compressing tool-use conversations. These are **recommendations**, not protocol requirements.
 
@@ -863,6 +900,19 @@ If tool records are present:
 * Invalid `status` value: error.
 * Missing required keys (`tool` on `#call`, `call`/`status` on `#ret`, `file`/`changes` on `#edit`, `summary` on `#think`): error.
 
+### V10 — State Token Validity (v1.2)
+
+If `#s` records are present:
+
+* `#s` must be followed by at least one non-whitespace token (the phase/progress value).
+* `#s` records do not require `@rid`.
+* Only the last `#s` record in a message is semantically meaningful; encoders should discard earlier ones.
+* Lines starting with `#s ` in assistant messages are state tokens — encoders preserve them verbatim.
+
+**Error behavior**:
+* `#s` with no value after it: warning in loose mode, error in strict mode.
+* Multiple `#s` records in encoded output: warning (only the last should survive).
+
 ---
 
 ## 12. Rendering Guideline (Human Endpoint)
@@ -891,7 +941,7 @@ PAIRL is not primarily a natural language format. **Rendering is a separate step
 PAIRL implementations should define error handling for:
 
 1. **Syntax errors**: malformed headers, invalid record format
-2. **Validation errors**: violation of rules V1-V9
+2. **Validation errors**: violation of rules V1-V10
 3. **Resolution errors**: unresolvable `ref:` pointers
 4. **Integrity errors**: hash mismatches, circular dependencies
 5. **Budget errors** (v1.1): budget exceeded, invalid currency codes
@@ -969,9 +1019,10 @@ v1.1 adds:
 v1.2 adds:
 
 * Tool records: `#call`, `#ret`, `#think`, `#edit`
-* Validation rule V9 (Tool Chain Integrity)
-* Compression strategy guidance for tool-use conversations (§7.6)
-* **Backward compatible**: v1.1 parsers can ignore v1.2 tool records
+* State token: `#s` for agent cognitive state tracking (§7.5)
+* Validation rules V9 (Tool Chain Integrity) and V10 (State Token Validity)
+* Compression strategy guidance for tool-use conversations (§7.7)
+* **Backward compatible**: v1.1 parsers can ignore v1.2 tool records and state tokens
 
 ---
 
@@ -1136,6 +1187,7 @@ upd{t=proxy_fix,s=t,l=2,m=+,a=i} @rid=a1
 #fact task="fix SSE header stripping in proxy service" @rid=f1
 #fact status=completed @rid=f2
 #fact tests_passed=42 @rid=f3
+#s done
 #think summary="need to find the proxy implementation" @rid=t01
 #call tool=Grep pattern="handleProxy" path="/src/" @rid=c01
 #ret  call=c01 status=ok matches=3 files="proxy.ts:161,proxy.ts:234,app.ts:558" @rid=r01

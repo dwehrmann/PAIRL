@@ -17,14 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `#ret` — tool result summary (status + compressed results)
   - `#think` — summarized reasoning step
   - `#edit` — aggregated file edits (multiple edits collapsed)
+- **State token**: `#s <phase>:<progress>` — agent cognitive state tracking
+  - Phases: `explore`, `ready`, `exec`, `done`
+  - Only the most recent `#s` survives compression
+  - No `@rid` required (ephemeral, not referenceable)
 - **Validation rule V9**: Tool Chain Integrity
   - `#ret` must reference valid `#call` RID via `call=` key
   - Status must be `ok` or `err`
   - Required keys enforced per record type
-- **Compression strategy guidance** (§7.6): recency window, edit aggregation, thinking removal
+- **Validation rule V10**: State Token Validity
+  - `#s` must be followed by a non-whitespace value
+  - Only the last `#s` in encoded output is meaningful
+- **Compression strategy guidance** (§7.7): recency window, edit aggregation, thinking removal
 
 #### Documentation
-- Section 7: Tool Records (§7.1–§7.6)
+- Section 7: Tool Records (§7.1–§7.8)
 - Appendix D: Tool-Use Compression Example
 - Example 06: Compressed tool-use session
 
@@ -146,7 +153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
-- **v1.2.0** (2026-02-25) — Tool-use compression (call, ret, think, edit)
+- **v1.2.0** (2026-02-25) — Tool-use compression (call, ret, think, edit) + state tokens (#s)
 - **v1.1.0** (2026-02-01) — Economic features (budget, cost, quota)
 - **v1.0.0** (2026-01-31) — Initial stable release
 
@@ -199,11 +206,12 @@ req{t=task,s=f,l=2} @rid=a1
 2. Use `#ret` records to summarize tool results (link via `call=<rid>`)
 3. Use `#think` records to preserve reasoning summaries
 4. Use `#edit` records to aggregate sequential file edits
-5. Apply recency window strategy: keep last W pairs as original messages
+5. Extract `#s` state tokens from assistant messages, preserve only the latest
+6. Apply recency window strategy: keep last W pairs as original messages
 
 **For Message Consumers (Parsers)**:
-1. Handle `#call`, `#ret`, `#think`, `#edit` records (or safely ignore them)
-2. Implement V9 validation rule if strict tool chain checking needed
+1. Handle `#call`, `#ret`, `#think`, `#edit`, `#s` records (or safely ignore them)
+2. Implement V9/V10 validation rules if strict checking needed
 3. Note renumbered sections (§7+ shifted by 1)
 4. No breaking changes — all v1.0/v1.1 messages remain valid
 
