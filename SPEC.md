@@ -1,4 +1,4 @@
-# PAIRL v1.2 — Protocol for Agent Intermediate Representation (Lite)
+# PAIRL v1.3 — Protocol for Agent Intermediate Representation (Lite)
 
 A compact, human-readable, machine-parseable agent-to-agent message format designed for:
 
@@ -40,7 +40,15 @@ Large content should not be repeated in-line. Instead, reference it via `ref:` p
 
 PAIRL messages are **atomic and immutable** once finalized. Each message represents a complete communication unit. Messages can reference other messages via `@parent` and `@deps`, forming a DAG (directed acyclic graph) of communication.
 
-### 0.4 Economy-First Design (v1.1)
+### 0.4 In-Body Turn Attribution (v1.3)
+
+Message-level threading (§2.2) attaches one header — including `@parent`/`@deps` — to one communication unit. But a common use is compressing an **entire multi-turn conversation history into a single body** (e.g. a gateway encoding a chat transcript), where there is no per-turn header to say *who* spoke or *which turn* a record came from. Inferring the speaker from intent type and line order is lossy and causes **attribution drift** (records assigned to the wrong speaker, turns reordered).
+
+v1.3 closes this with **in-body turn markers** (§3.3): a compact, header-free way to declare each turn's speaker and order inside the body. The canonical form is a single short token per turn — `#u1`, `#a2`, `#s3` (the letter is the speaker, the number is the order) — and records are attributed by **section grouping**: a record belongs to the most recent turn marker above it. This is the only PAIRL construct that carries a **speaker** — message headers identify and thread messages but never encode who authored them (that has been transport metadata).
+
+Because a turn's speaker is structural metadata (it is known to whatever assembled the conversation), the marker SHOULD be assigned **deterministically by the encoder/gateway**, not inferred by a language model. Doing so removes attribution drift by construction. See §3.3.
+
+### 0.5 Economy-First Design (v1.1)
 
 PAIRL v1.1 introduces native support for **resource management**:
 
@@ -127,10 +135,14 @@ Records appear after the empty line. One logical record per line.
 
 ### 3.1 Record Types
 
-PAIRL v1.2 defines:
+PAIRL v1.3 defines:
+
+**Turn marker (v1.3)**
+* `#u1` / `#a2` / `#s3` — compact conversation-turn marker (speaker letter + order) within the body (§3.3)
+* `#msg <id> r=<role> parent=<id|->` — verbose long form (also accepted; typically an encoder intermediate)
 
 **Lossy intent records**
-* `intent{...}` optionally suffixed with `@rid=...`
+* `intent{...}` optionally suffixed with `@m=...` and/or `@rid=...`
 
 **Lossless records**
 * `#fact k=v`
@@ -149,7 +161,7 @@ PAIRL v1.2 defines:
 * `#edit file="..." changes=<int> [summary="..."]`
 * `#s <phase>:<progress>` — agent cognitive state (no `@rid` required)
 
-All records may optionally include `@rid=<rid>` at the end.
+All records may optionally include `@m=<msg-id>` (turn binding, §3.3) and/or `@rid=<rid>` at the end. Canonical trailing order is `@m=` then `@rid=`.
 
 ### 3.2 Record IDs (RID)
 
@@ -162,6 +174,43 @@ All records may optionally include `@rid=<rid>` at the end.
 * Recommended alphabet: base36 `[a-z0-9]`.
 * Length: 1–8 chars.
 * Must be unique within a single message.
+
+### 3.3 In-Body Turn Markers — v1.3
+
+When a multi-turn conversation is compressed into a **single body**, message-level headers (§2) cannot attribute individual records to a turn or speaker. A turn marker makes this explicit, in-band. The canonical form is a single compact token per turn:
+
+```
+#<role><n>     e.g. #u1  #a2  #s3
+```
+
+* `<role>` — the speaker: `u` (user), `a` (assistant), `s` (system).
+* `<n>` — the turn order (1-based). Order is implicit in the sequence of markers, so no explicit `parent` is needed for the linear case.
+
+**Record binding (section grouping)**: records are grouped by turn — every record belongs to the **most recent turn marker above it**, and was spoken by that marker's role. This keeps the body free of per-record tags. A record that belongs to an *earlier* turn than its section carries an explicit `@m=<marker>` (e.g. `@m=a2`) to override the positional rule.
+
+**Deterministic assignment (no LLM attribution)**: a turn's speaker and order are structural — known to whatever assembled the conversation. The encoder/gateway therefore SHOULD emit these markers itself rather than ask a language model to label speakers. This removes *attribution drift* (records assigned to the wrong speaker) by construction, while the intent channel stays lossy.
+
+**Verbose long form** (also valid; typically an encoder intermediate that a gateway rewrites into the compact form): `#msg <id> r=<role> parent=<prev-id|->`, where `<id>` is a body-scoped turn id, `r=` the role (and MAY name a participant id for multi-party, e.g. `r=staff_eng`), and `parent=` the preceding turn id (`-` for the first). Records bind to it by the same grouping rule, with `@m=<id>` as the override.
+
+**Multi-party**: the compact `u`/`a`/`s` letters cover the common two-party + system case. For more participants, use the verbose `#msg` form with a named `r=` participant id.
+
+#### Example — multi-turn history compressed into one body
+
+```
+#u1
+req{t=db_migration,s=f,l=2,m=+,a=i} @rid=a1
+#fact current_version=pg12 @rid=f1
+#a2
+pln{t=migration_strategy,s=f,l=2,m=+} @rid=a2
+wrn{t=compatibility,s=f,l=1,m=!} @rid=a3
+#fact tool=aws_dms @rid=f2
+#fact risk=postgis_compatibility @rid=f3
+#u3
+qst{t=audit_log,s=f,l=1,m=0} @rid=a4
+#fact audit_table=schema_audit_log @rid=f4
+```
+
+Here `tool=aws_dms` is unambiguously the assistant's (under `#a2`) and `audit_table` the user's (under `#u3`) — no speaker inference required, and no per-record tags needed.
 
 ---
 
@@ -198,6 +247,8 @@ Parameters are comma-separated `k=v`.
    * `par` paragraphs, `bul` bullets, `num` numbered list
 
 **Canonical key order** (see §9.3): `t,s,l,m,a,u,fmt`
+
+**Speaker is not an intent parameter.** Intents describe *style and structure*, not who is speaking. The speaker/turn of an intent is given by the turn marker it sits under (§3.3), keeping the lossy channel free of attribution data.
 
 ### 4.1.1 Language Handling (Deliberate Omission)
 
@@ -666,14 +717,20 @@ message         := header-block LF body
 header-block    := header-line *(LF header-line)
 body            := *(record-line LF) [record-line]
 header-line     := "@" hkey SP hval
-record-line     := intent-record / hash-record
+record-line     := marker-record / msg-record / intent-record / hash-record
 
-intent-record   := intent-name ["{" kvpairs "}"] [SP rid]
+marker-record   := "#" ("u" / "a" / "s") 1*7(DIGIT)        ; compact turn marker, e.g. #u1
+msg-record      := "#msg" SP msgid SP "r=" role SP "parent=" (msgid / "-")  ; verbose long form
+msgid           := 1*8(ALNUM)
+role            := "u" / "a" / "s" / ident
+
+intent-record   := intent-name ["{" kvpairs "}"] [SP mtag] [SP rid]
 intent-name     := core-intent / custom-intent
 core-intent     := 2*4(LOWER / DIGIT)
 custom-intent   := ident "." ident *("." ident)
 
-hash-record     := "#" ident SP kvpairs [SP rid]
+hash-record     := "#" ident SP kvpairs [SP mtag] [SP rid]
+mtag            := "@m=" msgid
 rid             := "@rid=" 1*8(ALNUM)
 kvpairs         := kvpair *("," kvpair) / kvpair *(SP kvpair)
 kvpair          := key "=" value
@@ -795,7 +852,7 @@ A record is referenceable as:
 
 ---
 
-## 11. Validation Rules (v1.2)
+## 11. Validation Rules (v1.3)
 
 PAIRL validators should support at least two modes:
 
@@ -914,6 +971,21 @@ If `#s` records are present:
 * `#s` with no value after it: warning in loose mode, error in strict mode.
 * Multiple `#s` records in encoded output: warning (only the last should survive).
 
+### V11 — Turn Marker Integrity (v1.3)
+
+If turn markers are present (compact `#u1`/`#a2`/`#s3` or verbose `#msg`):
+
+* A compact marker must be `#<role><n>` with role in `u|a|s`; its id is `<role><n>` (e.g. `a2`).
+* A verbose `#msg` must have a turn `<id>`, an `r=` role, and a `parent=` value.
+* Turn ids must be unique within the body.
+* `parent=` (verbose) must be `-` or reference a turn id declared in the same body, with no cycle (cf. V7).
+* Any `@m=` on a record must reference a declared turn id.
+
+**Error behavior**:
+* Malformed marker, duplicate turn id, or dangling `@m=`/`parent=` reference: error.
+* Record with no `@m=` while markers are in use: allowed (grouping/positional rule, §3.3).
+* Turn markers do not require `@rid`.
+
 ---
 
 ## 12. Rendering Guideline (Human Endpoint)
@@ -942,7 +1014,7 @@ PAIRL is not primarily a natural language format. **Rendering is a separate step
 PAIRL implementations should define error handling for:
 
 1. **Syntax errors**: malformed headers, invalid record format
-2. **Validation errors**: violation of rules V1-V10
+2. **Validation errors**: violation of rules V1-V11
 3. **Resolution errors**: unresolvable `ref:` pointers
 4. **Integrity errors**: hash mismatches, circular dependencies
 5. **Budget errors** (v1.1): budget exceeded, invalid currency codes
@@ -981,7 +1053,7 @@ Implementations should provide structured error output including:
 ### 14.1 Protocol Versioning
 
 * PAIRL uses semantic versioning: `MAJOR.MINOR.PATCH`
-* Current version: **1.1**
+* Current version: **1.3**
 * `@v` header contains **major version only**
 
 ### 14.2 Version Compatibility
@@ -1024,6 +1096,17 @@ v1.2 adds:
 * Validation rules V9 (Tool Chain Integrity) and V10 (State Token Validity)
 * Compression strategy guidance for tool-use conversations (§7.7)
 * **Backward compatible**: v1.1 parsers can ignore v1.2 tool records and state tokens
+
+### 14.7 v1.3 Changes
+
+v1.3 adds:
+
+* In-body turn markers for speaker + turn-order attribution inside a single body (§0.4, §3.3): compact `#u1`/`#a2`/`#s3` (canonical) and a verbose `#msg <id> r=<role> parent=<id|->` long form
+* Section grouping: a record belongs to the most recent turn marker above it; `@m=<marker>` overrides
+* The first PAIRL construct to carry a **speaker**; message headers thread but never authored
+* Deterministic assignment: markers SHOULD be emitted by the encoder/gateway (speaker is structural), not inferred by an LLM — removing attribution drift by construction
+* Validation rule V11 (Turn Marker Integrity)
+* **Backward compatible**: v1.2 parsers can ignore turn markers and `@m=` tags; bodies without them are unchanged
 
 ---
 

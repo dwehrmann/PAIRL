@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2026-06-06
+
+### Added
+
+#### In-Body Turn Attribution
+- **Compact turn markers**: `#u1` / `#a2` / `#s3` — declare a conversation turn *inside the body* (letter = speaker u/a/s, number = order), for the common case of compressing a multi-turn history into a single header-less body. The first PAIRL construct to encode who spoke; message headers thread messages but never authored them.
+- **Section grouping**: a record belongs to the most recent turn marker above it and was spoken by that marker's role — no per-record tags in the common case. `@m=<marker>` (e.g. `@m=a2`) overrides for a cross-turn record.
+- **Verbose long form**: `#msg <id> r=<role> parent=<id|->` is also valid (typically an encoder intermediate a gateway rewrites into the compact marker); supports named `r=` participant ids for multi-party.
+- **Deterministic assignment**: markers SHOULD be emitted by the encoder/gateway (a turn's speaker is structural metadata), not inferred by a language model — removing attribution drift by construction.
+- **Validation rule V11**: Turn Marker Integrity
+  - Compact marker must be `#<role><n>` (role u/a/s); verbose `#msg` requires `r=` and `parent=`; turn ids unique within the body.
+  - `parent=` and `@m=` must reference declared turn ids (no dangling refs); no `parent=` cycles.
+  - A record without `@m=` is allowed (grouping rule); turn markers need no `@rid`.
+
+### Changed
+- §0.4 (new): rationale for in-body turn attribution vs. message-level threading; §0.5 = former Economy-First section.
+- §3.1 / §3.3: turn-marker record types and full semantics + example.
+- §4.1: speaker is deliberately *not* an intent parameter — it lives on the turn marker.
+- §8.3 grammar: `marker-record`, `msg-record`, `mtag` (`@m=`), `role`, `msgid`.
+- §3.2: canonical trailing order `@m=` then `@rid=`.
+
+### Motivation
+Compressing a transcript into one body dropped per-turn attribution, so decoders inferred the speaker from intent type + order — causing **attribution drift** (records reconstructed under the wrong speaker, turns reordered). Gateway-assigned turn markers make attribution deterministic and lossless while the intent channel stays lossy. Benchmarked in PAIRL-gateway on long, prose-heavy conversations (the intended regime): ~64–67% compression with coverage at-or-above the uncompressed baseline and near-zero lossless violations.
+
+### Compatibility
+- **Backward compatible**: v1.2 parsers ignore turn markers and `@m=` tags; bodies without them are unchanged.
+
+---
+
 ## [1.2.1] - 2026-02-27
 
 ### Fixed
