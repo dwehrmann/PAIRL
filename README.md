@@ -21,8 +21,6 @@ Instead of verbose natural language between AI agents, PAIRL uses:
 * **Anti-hallucination guardrails**: strict separation of facts from style
 * **Transport-agnostic**: works anywhere (HTTP, files, message queues, WebSocket)
 
-![Token cost of a long conversation: PAIRL v1.3 is ~38% of the natural-language token count, a 62% reduction, with fidelity preserved](assets/compression.svg)
-
 ---
 
 ## Quick Example

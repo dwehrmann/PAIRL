@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - §3.2: canonical trailing order `@m=` then `@rid=`.
 
 ### Motivation
-Compressing a transcript into one body dropped per-turn attribution, so decoders inferred the speaker from intent type + order — causing **attribution drift** (records reconstructed under the wrong speaker, turns reordered). Gateway-assigned turn markers make attribution deterministic and lossless while the intent channel stays lossy. Benchmarked in PAIRL-gateway on long, prose-heavy conversations (the intended regime): ~64–67% compression with coverage at-or-above the uncompressed baseline and near-zero lossless violations.
+Compressing a transcript into one body dropped per-turn attribution, so decoders inferred the speaker from intent type + order — causing **attribution drift** (records reconstructed under the wrong speaker, turns reordered). Gateway-assigned turn markers make attribution deterministic and lossless while the intent channel stays lossy.
 
 ### Compatibility
 - **Backward compatible**: v1.2 parsers ignore turn markers and `@m=` tags; bodies without them are unchanged.
