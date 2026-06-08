@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 330" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 360" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
   <defs>
     <linearGradient id="curve" x1="0" y1="1" x2="1" y2="0">
       <stop offset="0" stop-color="#6366f1"/>
@@ -10,45 +10,45 @@
     </linearGradient>
   </defs>
 
-  <rect x="8" y="8" width="744" height="314" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="8" y="8" width="804" height="344" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
 
-  <text x="36" y="48" font-size="21" font-weight="700" fill="#0f172a">The longer the conversation, the more PAIRL compresses</text>
-  <text x="36" y="72" font-size="13.5" fill="#64748b">Conversational, prose-heavy context compresses far more than short, terse exchanges</text>
+  <!-- header band -->
+  <text x="36" y="44" font-size="20" font-weight="700" fill="#0f172a">The longer the conversation, the more PAIRL compresses</text>
+  <text x="36" y="68" font-size="13" fill="#64748b">Conversational, prose-heavy context compresses far more than short, terse exchanges</text>
 
-  <!-- y gridlines + labels (token reduction) -->
+  <!-- y gridlines -->
   <g stroke="#eef2f7" stroke-width="1">
-    <line x1="110" y1="50"  x2="690" y2="50"/>
-    <line x1="110" y1="117" x2="690" y2="117"/>
-    <line x1="110" y1="183" x2="690" y2="183"/>
+    <line x1="120" y1="110" x2="740" y2="110"/>
+    <line x1="120" y1="170" x2="740" y2="170"/>
+    <line x1="120" y1="230" x2="740" y2="230"/>
   </g>
   <g font-size="11.5" fill="#94a3b8" text-anchor="end">
-    <text x="98" y="54">75%</text>
-    <text x="98" y="121">50%</text>
-    <text x="98" y="187">25%</text>
-    <text x="98" y="254">0%</text>
+    <text x="108" y="114">75%</text>
+    <text x="108" y="174">50%</text>
+    <text x="108" y="234">25%</text>
+    <text x="108" y="294">0%</text>
   </g>
-  <text x="40" y="160" font-size="12" font-weight="600" fill="#475569" transform="rotate(-90 40 160)">Token reduction</text>
+  <text x="46" y="205" font-size="12" font-weight="600" fill="#475569" text-anchor="middle" transform="rotate(-90 46 205)">Token reduction</text>
 
-  <!-- x axis -->
-  <line x1="110" y1="250" x2="690" y2="250" stroke="#cbd5e1" stroke-width="1.5"/>
-  <line x1="110" y1="250" x2="110" y2="50" stroke="#cbd5e1" stroke-width="1.5"/>
-  <text x="150" y="272" font-size="12" fill="#64748b">Short, terse chat</text>
-  <text x="680" y="272" font-size="12" fill="#64748b" text-anchor="end">Long, prose-heavy chain</text>
-  <text x="400" y="298" font-size="12" font-weight="600" fill="#475569" text-anchor="middle">Conversation length &#8594;</text>
+  <!-- axes -->
+  <line x1="120" y1="290" x2="740" y2="290" stroke="#cbd5e1" stroke-width="1.5"/>
+  <line x1="120" y1="290" x2="120" y2="110" stroke="#cbd5e1" stroke-width="1.5"/>
 
-  <!-- area under curve -->
-  <path d="M 110,218 C 150,210 175,202 200,197 C 320,185 440,120 600,77 C 640,72 660,70 680,68 L 680,250 L 110,250 Z" fill="url(#fill)"/>
-  <!-- the curve -->
-  <path d="M 110,218 C 150,210 175,202 200,197 C 320,185 440,120 600,77 C 640,72 660,70 680,68"
+  <!-- area + curve -->
+  <path d="M 120,261 C 170,253 205,247 230,242 C 380,228 480,160 640,134 C 685,128 715,127 740,125 L 740,290 L 120,290 Z" fill="url(#fill)"/>
+  <path d="M 120,261 C 170,253 205,247 230,242 C 380,228 480,160 640,134 C 685,128 715,127 740,125"
         fill="none" stroke="url(#curve)" stroke-width="3.5" stroke-linecap="round"/>
 
   <!-- anchor: short regime -->
-  <circle cx="200" cy="197" r="5.5" fill="#6366f1" stroke="#ffffff" stroke-width="2"/>
-  <text x="214" y="193" font-size="14" font-weight="700" fill="#4f46e5">~20%</text>
-  <text x="214" y="208" font-size="10.5" fill="#94a3b8">short chats</text>
+  <circle cx="230" cy="242" r="5.5" fill="#6366f1" stroke="#ffffff" stroke-width="2"/>
+  <text x="248" y="240" font-size="15" font-weight="700" fill="#4f46e5">~20%</text>
 
   <!-- anchor: long regime -->
-  <circle cx="600" cy="77" r="5.5" fill="#0891b2" stroke="#ffffff" stroke-width="2"/>
-  <text x="600" y="62" font-size="16" font-weight="800" fill="#0e7490" text-anchor="middle">~65%</text>
-  <text x="600" y="46" font-size="10.5" fill="#94a3b8" text-anchor="middle">long agent / chat context</text>
+  <circle cx="640" cy="134" r="5.5" fill="#0891b2" stroke="#ffffff" stroke-width="2"/>
+  <text x="640" y="120" font-size="16" font-weight="800" fill="#0e7490" text-anchor="middle">~65%</text>
+
+  <!-- x labels -->
+  <text x="150" y="312" font-size="12" fill="#64748b">Short, terse chat</text>
+  <text x="740" y="312" font-size="12" fill="#64748b" text-anchor="end">Long, prose-heavy chain</text>
+  <text x="430" y="338" font-size="12" font-weight="600" fill="#475569" text-anchor="middle">Conversation length &#8594;</text>
 </svg>
