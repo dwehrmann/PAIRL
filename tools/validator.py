@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PAIRL v1.2 Validator
+PAIRL v1.3 Validator
 
 Reference validator for PAIRL message syntax and core validation rules.
 Policy checks (for example V1 no-new-facts heuristics) are reported separately.
@@ -18,9 +18,16 @@ from typing import Dict, List, Optional, Set, Tuple
 INTENT_PATTERN = re.compile(
     r"^([a-z0-9]{2,4}|[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+)"
     r"(?:\{([^}]*)\})?"
+    r"(?:\s+@m=[a-z0-9]+)?"  # v1.3 turn-binding override (optional)
     r"(?:\s+@rid=([A-Za-z0-9]{1,8}))?$"
 )
 RID_PATTERN = re.compile(r"@rid=([A-Za-z0-9]{1,8})$")
+# v1.3 turn markers: compact `#u1`/`#a2`/`#s3` and verbose `#msg <id> r= parent=`
+COMPACT_MARKER_PATTERN = re.compile(r"^#([uas][0-9]{1,7})$")
+MSG_RECORD_PATTERN = re.compile(
+    r"^#msg\s+([a-z0-9_]+)\s+r=([a-z0-9_]+)\s+parent=([a-z0-9_]+|-)\s*$"
+)
+M_REF_PATTERN = re.compile(r"@m=([a-z0-9_]+)")
 KV_TOKEN_PATTERN = re.compile(r"\b([a-z][a-z0-9_]*)=([^\s]+)")
 EVID_CONF_PATTERN = re.compile(r"\bconf=([0-9]+(?:\.[0-9]+)?)\b")
 BUDGET_PATTERN = re.compile(r"^([0-9]+(?:\.[0-9]+)?)([A-Za-z]{1,16})$")
@@ -388,9 +395,64 @@ class PAIRLMessage:
         self.validate_rid_uniqueness()
         self.validate_cost_and_quota()
         self.validate_tool_records(strict)
+        self.validate_turn_markers()
         self.validate_budget()
 
         return len(self.errors) == 0
+
+    def validate_turn_markers(self) -> bool:
+        """V11 (v1.3): turn-marker integrity.
+
+        Accepts compact markers (`#u1`/`#a2`/`#s3`) and the verbose long form
+        (`#msg <id> r=<role> parent=<id|->`). Turn ids must be unique, and any
+        `@m=`/`parent=` reference must resolve to a declared marker. A record
+        with no `@m=` is fine (section grouping). Only enforced when markers exist.
+        """
+        passed = True
+        marker_ids: Set[str] = set()
+        refs: List[Tuple[str, str]] = []  # (referenced_id, kind)
+
+        for record in self.records:
+            compact = COMPACT_MARKER_PATTERN.match(record)
+            if compact:
+                mid = compact.group(1)
+                if mid in marker_ids:
+                    self.errors.append(f"V11: duplicate turn marker #{mid}")
+                    passed = False
+                marker_ids.add(mid)
+                continue
+
+            if record.startswith("#msg"):
+                m = MSG_RECORD_PATTERN.match(record)
+                if not m:
+                    self.errors.append(
+                        f"V11: malformed #msg (need '#msg <id> r=<role> parent=<id|->'): {record}"
+                    )
+                    passed = False
+                    continue
+                mid, _role, parent = m.groups()
+                if mid in marker_ids:
+                    self.errors.append(f"V11: duplicate turn id '{mid}'")
+                    passed = False
+                marker_ids.add(mid)
+                if parent != "-":
+                    refs.append((parent, "parent"))
+                continue
+
+            # A normal record may carry an @m= override reference.
+            mref = M_REF_PATTERN.search(record)
+            if mref:
+                refs.append((mref.group(1), "@m"))
+
+        if marker_ids:
+            for ref_id, kind in refs:
+                if ref_id not in marker_ids:
+                    self.errors.append(
+                        f"V11: {kind}={ref_id} references undeclared turn marker"
+                    )
+                    passed = False
+
+        return passed
 
     def _count_tool_records(self) -> Dict[str, int]:
         """Count tool record types for reporting."""

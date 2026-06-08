@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <linearGradient id="pairl" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="8" y="8" width="744" height="284" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+
+  <text x="36" y="54" font-size="22" font-weight="700" fill="#0f172a">Token cost of a long conversation</text>
+  <text x="36" y="80" font-size="14" fill="#64748b">Same multi-turn chain, encoded as natural language vs. PAIRL v1.3</text>
+
+  <!-- Natural language bar (100%) -->
+  <text x="36" y="131" font-size="14" font-weight="600" fill="#334155">Natural language</text>
+  <rect x="200" y="108" width="500" height="34" rx="7" fill="#cbd5e1"/>
+  <text x="690" y="131" font-size="14" font-weight="700" fill="#475569" text-anchor="end">100%</text>
+
+  <!-- PAIRL bar (38%) -->
+  <text x="36" y="191" font-size="14" font-weight="600" fill="#334155">PAIRL v1.3</text>
+  <rect x="200" y="168" width="190" height="34" rx="7" fill="url(#pairl)"/>
+  <text x="404" y="191" font-size="14" font-weight="700" fill="#0f172a">38%</text>
+
+  <!-- reduction callout -->
+  <text x="690" y="191" font-size="20" font-weight="800" fill="#0ea5e9" text-anchor="end">&#8722;62%</text>
+  <text x="690" y="210" font-size="11" fill="#64748b" text-anchor="end">tokens</text>
+
+  <text x="36" y="258" font-size="12.5" fill="#64748b">Long, prose-heavy chains (PAIRL's intended regime): 56&#8211;67% token reduction measured across encoders,</text>
+  <text x="36" y="276" font-size="12.5" fill="#64748b">with answer fidelity preserved (coverage at-or-above the uncompressed baseline) and deterministic speaker attribution.</text>
+</svg>

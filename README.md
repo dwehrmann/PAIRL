@@ -1,6 +1,6 @@
 # PAIRL — Protocol for Agent Intermediate Representation (Lite)
 
-**Version 1.2** | [Specification](SPEC.md) | [Examples](examples/) | [Contributing](CONTRIBUTING.md) | [Website](https://pairl.dev)
+**Version 1.3** | [Specification](SPEC.md) | [Examples](examples/) | [Contributing](CONTRIBUTING.md) | [Website](https://pairl.dev)
 
 > **PAIRL is an officially recognized R&D project**, certified by the German Federal Ministry of Finance (BSFZ) as eligible for research and development funding under the Forschungszulagengesetz (FZulG) — effective May 2026.
 
@@ -15,10 +15,13 @@ Instead of verbose natural language between AI agents, PAIRL uses:
 * **Two channels**: lossy intents (style/mood) + lossless facts (names, numbers, evidence)
 * **Pointer-first state**: references instead of copying large content
 * **Token efficiency**: 70-90% reduction vs natural language
+* **Turn attribution** (v1.3): compact `#u1`/`#a2` markers preserve *who said what* when a whole conversation is compressed into one body — assigned deterministically, so the speaker never drifts
 * **Tool-use compression** (v1.2): compact encoding of tool-call/result chains (~95% reduction)
 * **Economic features** (v1.1): native budget tracking, cost reporting, quota management
 * **Anti-hallucination guardrails**: strict separation of facts from style
 * **Transport-agnostic**: works anywhere (HTTP, files, message queues, WebSocket)
+
+![Token cost of a long conversation: PAIRL v1.3 is ~38% of the natural-language token count, a 62% reduction, with fidelity preserved](assets/compression.svg)
 
 ---
 
@@ -119,6 +122,23 @@ Messages form a DAG (directed acyclic graph):
 * **Reasoning**: `#think summary="identified root cause"` captures decision chain
 * **Edit aggregation**: `#edit file="/src/proxy.ts" changes=3 summary="..."` collapses edits
 
+### 7. In-Body Turn Attribution (v1.3)
+
+When a whole multi-turn conversation is compressed into a single body, message-level threading (§3) can't say *who* spoke each line. Compact turn markers do:
+
+```
+#u1
+req{t=launch} @rid=a1
+#fact ramp=5pct @rid=f1
+#a2
+pln{t=rollout} @rid=a2
+#fact window=30min @rid=f2
+```
+
+* **`#u1` / `#a2` / `#s3`** mark each turn — letter is the speaker (user/assistant/system), number is the order.
+* Records belong to the **most recent marker above them** (section grouping), so the speaker is unambiguous with almost no overhead.
+* Markers are assigned **deterministically by the encoder/gateway** (the speaker is structural metadata), so attribution can't drift — unlike inferring the speaker from a flattened record stream.
+
 ---
 
 ## Use Cases
@@ -138,7 +158,7 @@ Commercial use is permitted under Apache 2.0 (see [LICENSE](LICENSE)).
 
 ### 1. Read the Spec
 
-Start with [SPEC.md](SPEC.md) for the complete v1.2 specification.
+Start with [SPEC.md](SPEC.md) for the complete v1.3 specification.
 
 ### 2. Explore Examples
 
@@ -147,6 +167,8 @@ See [examples/](examples/) for:
 * Threaded multi-agent conversations
 * Evidence-based reporting
 * Complex workflows
+* Tool-use sessions
+* Turn attribution — a conversation compressed into one body with `#u1`/`#a2` markers ([07](examples/07-turn-attribution.pairl) · [rendered](examples/07-turn-attribution.rendered.md))
 
 ### 3. Implement or Integrate
 
@@ -161,12 +183,13 @@ See [examples/](examples/) for:
 
 ## Project Status
 
-**Current version**: 1.2 (February 2026)
+**Current version**: 1.3 (June 2026)
 
 * Core spec stabilized (v1.0)
 * Economic features added (v1.1)
 * Tool-use compression added (v1.2)
-* Python validator available (tools/validator.py)
+* In-body turn attribution added (v1.3)
+* Python validator available (tools/validator.py); v1.3 conformance tests in tools/test_turn_markers.py
 * Reference implementations in progress
 * Community feedback welcome
 
