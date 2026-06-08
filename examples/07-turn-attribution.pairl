@@ -1,0 +1,21 @@
+@v 1
+@mid ref:msg:01JH0Q8A1B2C3D4E5F6G7H8I9J
+@ts 2026-06-08T10:15:00.000+02:00
+
+#u1
+req{t=db_migration,s=f,l=2,m=+,a=i} @rid=a1
+#fact current_version=pg12 @rid=f1
+#fact target_version=pg16 @rid=f2
+#a2
+pln{t=migration_strategy,s=f,l=2,m=+} @rid=a3
+wrn{t=compatibility,s=f,l=1,m=!} @rid=a4
+#fact tool=aws_dms @rid=f3
+#fact strategy=blue_green @rid=f4
+#fact risk=postgis_compatibility @rid=f5
+#u3
+qst{t=audit_log,s=f,l=1,m=0} @rid=a5
+#a4
+ack{t=data_preservation,s=f,l=1,m=+} @rid=a6
+cnt{t=triggers,s=f,l=1,m=!} @rid=a7
+#fact triggers_require_manual_recreation=true @rid=f6
+#evid claim="DMS migrates data but not event triggers" src=ref:doc:aws:dms conf=0.95 @rid=e1
