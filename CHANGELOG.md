@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.0] - 2026-06-22
+
+### Added
+
+#### Session-Local Short References
+- **Short ids**: `@id m2` / `@p m1` — session-local identifiers (`m1`, `m4`, …) unique within a thread, replacing v1.3's `@mid ref:msg:<ULID>` / `@parent`. Separates identity (cheap) from integrity (full content-hashes stay available via `@hash` / `#ref …sha256` when needed).
+- **Global session anchor**: `@sid <ULID>` declared once on the root message; downstream messages reference it implicitly ("ULID only where needed").
+- **Derivable-field elision** (§9.1a): `@root` MAY be omitted when reachable via the `@p` chain; `@deps` deduplicated against root/parent.
+- **Record references**: `@m1#a1` (local) and `ref:msg:<sid>:<id>#<rid>` (fully-qualified cross-session).
+
+### Changed
+- §9.1 / §10: threading uses session-local short ids; cross-session edges carry their own `@sid` namespace and are referenced fully-qualified.
+
+### Compatibility
+- **Back-compat preserved**: the long forms `@mid ref:msg:<ULID>`, `@parent`, and `@root`/`@deps` with `ref:msg:<ULID>` values (v1.3) remain valid. A message MUST carry exactly one of `@id` or `@mid`; new messages SHOULD use `@id`.
+
+---
+
 ## [1.3.0] - 2026-06-06
 
 ### Added
