@@ -1,0 +1,31 @@
+@v 1
+@id m5
+@ts 2026-01-31T17:00:00.000+01:00
+@p m4
+@budget 0.50USD
+
+rpt{t=final_report,s=f,l=3,m=+,a=c,u=lo,fmt=par}
+#fact report_title="AI Trends 2026: Comprehensive Analysis"
+#fact report_date=2026-01-31
+#fact sections_count=5
+#fact word_count=2500
+#fact confidence_avg=0.83
+#ref full_report=ref:doc:sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+#ref s1=ref:url:techcrunch:2025-12-15
+#ref s2=ref:url:gartner:2026-01-10
+#ref s3=ref:url:forrester:2026-01-20
+#ref s4=ref:url:arxiv:2026-01-15
+#ref s5=ref:url:mit-tech-review:2026-01-25
+#evid[claim,src,conf]
+"LLM costs decreased 60% in 2025" s1 0.85
+"Multi-agent systems adoption increased 300%" s2 0.90
+"PAIRL adoption growing in enterprise" s3 0.75
+"Transformer alternatives showing promise" s4 0.70
+"AI regulation frameworks converging globally" s5 0.88
+#cost val=0.42 cur=USD model=gpt-4o note="research + analysis + report generation"
+#quota[type,total,used,rem]
+tokens 50000 38500 11500
+api_calls 25 18 7
+#rule no_new_facts=true
+#rule require_src_for_claims=true
+---

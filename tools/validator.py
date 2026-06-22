@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-PAIRL v1.3 Validator
+PAIRL v1.5 Validator
 
 Reference validator for PAIRL message syntax and core validation rules.
 Policy checks (for example V1 no-new-facts heuristics) are reported separately.
+
+Supports v1.3 turn markers, v1.4 short message ids (`@id`/`@p`), and
+v1.5 columnar record blocks (`#type[col,col]` + positional rows, V12).
 
 Usage:
     python validator.py <file.pairl>
@@ -33,6 +36,11 @@ EVID_CONF_PATTERN = re.compile(r"\bconf=([0-9]+(?:\.[0-9]+)?)\b")
 BUDGET_PATTERN = re.compile(r"^([0-9]+(?:\.[0-9]+)?)([A-Za-z]{1,16})$")
 KNOWN_INTENT_NUMERIC_KEYS = {"l", "m"}
 TOOL_RECORD_PREFIXES = ("#call ", "#ret ", "#think ", "#edit ")
+# v1.5 columnar block header, e.g. #evid[claim,src,conf]
+COL_HEADER_PATTERN = re.compile(r"^#([a-z][a-z0-9_]*)\[([^\]]*)\]$")
+# Record types whose key is itself data (variable per line) — columnar does not apply.
+COL_FORBIDDEN_TYPES = {"fact", "ref"}
+COL_TRAILING_TAG = re.compile(r"^@(?:m|rid)=")
 
 
 def split_ref(ref_value: str) -> Tuple[str, Optional[str]]:
@@ -41,6 +49,19 @@ def split_ref(ref_value: str) -> Tuple[str, Optional[str]]:
         return ref_value, None
     main, fragment = ref_value.rsplit("#", 1)
     return main, fragment
+
+
+def is_sloc_ref(value: str) -> bool:
+    """v1.4 session-local reference: `@<id>` or `@<id>#<rid>` (e.g. @m1, @m1#a2)."""
+    return bool(re.fullmatch(r"@[A-Za-z0-9]{1,8}(?:#[A-Za-z0-9_-]{1,8})?", value))
+
+
+def is_dep_ref(value: str) -> bool:
+    """A @deps entry: a bare session-local id, an @-prefixed sloc ref, or a full ref."""
+    if is_valid_ref(value) or is_sloc_ref(value):
+        return True
+    # bare session-local id (threading-header shorthand), optional #rid fragment
+    return bool(re.fullmatch(r"[A-Za-z0-9]{1,8}(?:#[A-Za-z0-9_-]{1,8})?", value))
 
 
 def is_valid_ref(ref_value: str) -> bool:
@@ -82,6 +103,8 @@ class PAIRLMessage:
     def __init__(self, raw_text: str):
         self.headers: Dict[str, str] = {}
         self.records: List[str] = []
+        # v1.5 columnar blocks: list of (rtype, columns, [raw_row, ...])
+        self.columnar_blocks: List[Tuple[str, List[str], List[str]]] = []
         self.raw_text = raw_text
         self.errors: List[str] = []
         self.warnings: List[str] = []
@@ -110,10 +133,90 @@ class PAIRLMessage:
             else:
                 self.errors.append(f"Malformed header: {line}")
 
-        for line in body_part.split("\n"):
-            line = line.strip()
-            if line:
-                self.records.append(line)
+        body_lines = [ln.strip() for ln in body_part.split("\n")]
+        i = 0
+        while i < len(body_lines):
+            line = body_lines[i]
+            if not line or line == "---":
+                i += 1
+                continue
+            header_match = COL_HEADER_PATTERN.match(line)
+            if header_match:
+                rtype = header_match.group(1)
+                cols = [c.strip() for c in header_match.group(2).split(",")]
+                rows: List[str] = []
+                i += 1
+                # Rows continue until a blank line, a '#'-line, or '---'.
+                while i < len(body_lines):
+                    row = body_lines[i]
+                    if not row or row.startswith("#") or row == "---":
+                        break
+                    rows.append(row)
+                    self.records.append(self._expand_col_row(rtype, cols, row))
+                    i += 1
+                self.columnar_blocks.append((rtype, cols, rows))
+                continue
+            self.records.append(line)
+            i += 1
+
+    @staticmethod
+    def _split_row(row: str) -> List[Tuple[str, bool]]:
+        """Tokenize a columnar row into (value, was_quoted) fields.
+
+        A field is either a double-quoted string (with `\\"` escaping, kept as a
+        single field) or a run of non-space characters (an atom). Trailing
+        `@m=`/`@rid=` tags are returned as unquoted fields too — callers peel them off.
+        """
+        fields: List[Tuple[str, bool]] = []
+        n = len(row)
+        i = 0
+        while i < n:
+            if row[i] == " ":
+                i += 1
+                continue
+            if row[i] == '"':
+                buf = []
+                i += 1
+                while i < n:
+                    if row[i] == "\\" and i + 1 < n and row[i + 1] == '"':
+                        buf.append('"')
+                        i += 2
+                        continue
+                    if row[i] == '"':
+                        i += 1
+                        break
+                    buf.append(row[i])
+                    i += 1
+                fields.append(("".join(buf), True))
+            else:
+                start = i
+                while i < n and row[i] != " ":
+                    i += 1
+                fields.append((row[start:i], False))
+        return fields
+
+    @classmethod
+    def _row_fields_and_tags(cls, row: str) -> Tuple[List[Tuple[str, bool]], List[str]]:
+        """Split a row into positional (value, quoted) fields and trailing @m=/@rid= tags."""
+        toks = cls._split_row(row)
+        tags: List[str] = []
+        while toks and not toks[-1][1] and COL_TRAILING_TAG.match(toks[-1][0]):
+            tags.insert(0, toks.pop()[0])
+        return toks, tags
+
+    @classmethod
+    def _expand_col_row(cls, rtype: str, cols: List[str], row: str) -> str:
+        """Expand one columnar row to the equivalent `#type key=value` record (§9.4a).
+
+        Best-effort: if the field count does not match, expand what aligns so
+        downstream checks still see a record; V12 reports the mismatch.
+        """
+        fields, tags = cls._row_fields_and_tags(row)
+        parts = [f"#{rtype}"]
+        for col, (val, quoted) in zip(cols, fields):
+            parts.append(f'{col}="{val}"' if quoted else f"{col}={val}")
+        parts.extend(tags)
+        return " ".join(parts)
 
     def _has_rule(self, rule_name: str) -> bool:
         for record in self.records:
@@ -125,12 +228,15 @@ class PAIRLMessage:
         return any(record.startswith(prefix) for prefix in TOOL_RECORD_PREFIXES)
 
     def validate_required_headers(self) -> bool:
-        required = ["v", "mid", "ts"]
         passed = True
-        for field in required:
+        for field in ["v", "ts"]:
             if field not in self.headers:
                 self.errors.append(f"Missing required header: @{field}")
                 passed = False
+        # A message must carry exactly one of @id (v1.4) or @mid (v1.3 long form).
+        if "id" not in self.headers and "mid" not in self.headers:
+            self.errors.append("Missing required header: @id (or legacy @mid)")
+            passed = False
         return passed
 
     def validate_intent_syntax(self) -> bool:
@@ -231,15 +337,16 @@ class PAIRLMessage:
         for record in self.records:
             if not record.startswith("#ref"):
                 continue
-            ref_values = re.findall(r"=\s*(ref:[^\s]+)", record)
-            if not ref_values:
+            m = re.match(r"#ref\s+[a-z][a-z0-9_]*=(\S+)", record)
+            if not m:
                 self.errors.append(f"#ref record missing ref value: {record}")
                 passed = False
                 continue
-            for ref_value in ref_values:
-                if not is_valid_ref(ref_value):
-                    self.errors.append(f"Invalid ref format: {ref_value}")
-                    passed = False
+            ref_value = m.group(1)
+            # v1.4: a #ref value may be a long/short ref or a session-local ref.
+            if not (is_valid_ref(ref_value) or is_sloc_ref(ref_value)):
+                self.errors.append(f"Invalid ref format: {ref_value}")
+                passed = False
 
         for key, value in self.headers.items():
             if key == "deps":
@@ -249,7 +356,7 @@ class PAIRLMessage:
                         self.errors.append("Invalid @deps format: empty dependency entry")
                         passed = False
                         continue
-                    if not is_valid_ref(dep):
+                    if not is_dep_ref(dep):
                         self.errors.append(f"Invalid ref format in @deps: {dep}")
                         passed = False
                 continue
@@ -396,6 +503,7 @@ class PAIRLMessage:
         self.validate_cost_and_quota()
         self.validate_tool_records(strict)
         self.validate_turn_markers()
+        self.validate_columnar()
         self.validate_budget()
 
         return len(self.errors) == 0
@@ -452,6 +560,45 @@ class PAIRLMessage:
                     )
                     passed = False
 
+        return passed
+
+    def validate_columnar(self) -> bool:
+        """V12 (v1.5): columnar block integrity (§3.4).
+
+        Header must name a fixed-schema type (not #fact/#ref) with a non-empty,
+        duplicate-free column list; every row must have exactly as many positional
+        fields as columns (quoted strings count as one), trailing @m=/@rid= aside.
+        Per-record semantics are checked after expansion by the other rules.
+        """
+        passed = True
+        for rtype, cols, rows in self.columnar_blocks:
+            label = f"#{rtype}[{','.join(cols)}]"
+            if rtype in COL_FORBIDDEN_TYPES:
+                self.errors.append(
+                    f"V12: columnar form not allowed for #{rtype} (key is data): {label}"
+                )
+                passed = False
+            if not cols or any(c == "" for c in cols):
+                self.errors.append(f"V12: empty/malformed column list: {label}")
+                passed = False
+                continue
+            for c in cols:
+                if not re.fullmatch(r"[a-z][a-z0-9_]*", c):
+                    self.errors.append(f"V12: invalid column key '{c}' in {label}")
+                    passed = False
+            if len(set(cols)) != len(cols):
+                self.errors.append(f"V12: duplicate column key in {label}")
+                passed = False
+            if not rows:
+                self.warnings.append(f"V12: columnar block has no rows: {label}")
+            for row in rows:
+                fields, _tags = self._row_fields_and_tags(row)
+                if len(fields) != len(cols):
+                    self.errors.append(
+                        f"V12: row has {len(fields)} field(s), expected {len(cols)} "
+                        f"for {label}: {row}"
+                    )
+                    passed = False
         return passed
 
     def _count_tool_records(self) -> Dict[str, int]:
@@ -519,7 +666,7 @@ def main() -> None:
 
     print("\nMessage info:")
     print(f"  Version: {msg.headers.get('v', 'N/A')}")
-    print(f"  ID: {msg.headers.get('mid', 'N/A')}")
+    print(f"  ID: {msg.headers.get('id', msg.headers.get('mid', 'N/A'))}")
     print(f"  Timestamp: {msg.headers.get('ts', 'N/A')}")
     print(f"  Records: {len(msg.records)}")
     if "budget" in msg.headers:

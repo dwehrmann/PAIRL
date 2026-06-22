@@ -1,6 +1,6 @@
 # PAIRL — Protocol for Agent Intermediate Representation (Lite)
 
-**Version 1.4** | [Specification](SPEC.md) | [Examples](examples/) | [Contributing](CONTRIBUTING.md) | [Website](https://pairl.dev)
+**Version 1.5** | [Specification](SPEC.md) | [Examples](examples/) | [Contributing](CONTRIBUTING.md) | [Website](https://pairl.dev)
 
 > **PAIRL is an officially recognized R&D project**, certified by the German Federal Ministry of Finance (BSFZ) as eligible for research and development funding under the Forschungszulagengesetz (FZulG) — effective May 2026.
 
@@ -15,6 +15,7 @@ Instead of verbose natural language between AI agents, PAIRL uses:
 * **Two channels**: lossy intents (style/mood) + lossless facts (names, numbers, evidence)
 * **Pointer-first state**: references instead of copying large content
 * **Token efficiency**: 70-90% reduction vs natural language
+* **Columnar record blocks** (v1.5): repeated same-type records declare their key schema once (`#evid[claim,src,conf]` + positional rows) instead of repeating `key=` per line — ~40% fewer tokens on schema-heavy messages, lossless and back-compatible
 * **Short references** (v1.4): session-local `@id m2`/`@p m1` ids and `@m1#a1` record refs separate identity from integrity, cutting threading overhead while full content-hashes stay available when needed
 * **Turn attribution** (v1.3): compact `#u1`/`#a2` markers preserve *who said what* when a whole conversation is compressed into one body — assigned deterministically, so the speaker never drifts
 * **Tool-use compression** (v1.2): compact encoding of tool-call/result chains (~95% reduction)
@@ -163,7 +164,7 @@ Commercial use is permitted under Apache 2.0 (see [LICENSE](LICENSE)).
 
 ### 1. Read the Spec
 
-Start with [SPEC.md](SPEC.md) for the complete v1.4 specification.
+Start with [SPEC.md](SPEC.md) for the complete v1.5 specification.
 
 ### 2. Explore Examples
 
@@ -188,13 +189,14 @@ See [examples/](examples/) for:
 
 ## Project Status
 
-**Current version**: 1.4 (June 2026)
+**Current version**: 1.5 (June 2026)
 
 * Core spec stabilized (v1.0)
 * Economic features added (v1.1)
 * Tool-use compression added (v1.2)
 * In-body turn attribution added (v1.3)
 * Session-local short references added (v1.4)
+* Columnar record blocks added (v1.5)
 * Python validator available (tools/validator.py); v1.3 conformance tests in tools/test_turn_markers.py
 * Reference implementations in progress
 * Community feedback welcome

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.5.0] - 2026-06-22
+
+### Added
+
+#### Columnar Record Blocks
+- **`#type[col,col,…]` header + positional rows** (§3.4): when several records of the same type share a key schema, declare the keys once and list values positionally — `#evid[claim,src,conf]` then `"…" s1 0.85` — instead of repeating `claim=`/`src=`/`conf=` on every line. Optional, lossless alternative to the `key=value` form.
+- **Field rules**: any field with spaces/special chars must be a quoted string (`\"` escaping, §8.2); unquoted fields are atoms; a row must have exactly as many fields as the header has columns.
+- **Grammar** (§8.3): `col-header` and `col-row` productions; a block opens at a `#type[…]` header and ends at the next `#`-line, blank line, or `---`.
+- **Validation rule V12** (Columnar Block Integrity): well-formed header, no duplicate column keys, exact per-row field count, quoting rules, and post-expansion type rules (e.g. expanded `#evid` still needs `claim`/`src`/`conf`).
+- **Canonicalization** (§9.4a): columnar blocks expand to `#type key=value` records before hashing, so a message hashes identically in either form — `@hash`, dedup, and caching are unaffected.
+
+### Rationale
+- Measured on a real report message: scaffolding is ~90% of tokens and natural-language payload only ~10%. Declaring the schema once (dropping repeated keys) cut a representative message **43%** vs the verbose form, structurally lossless (deterministic round-trip), with no decoder fidelity loss in an isolated LLM probe (100% field-association accuracy, parity with `key=value`).
+
+### Compatibility
+- **Back-compat preserved**: the `key=value` record form (all prior versions) remains fully valid. Columnar is opt-in; decoders MUST accept both. Records with per-line distinct keys (`#fact`, one-off `#rule`) keep `key=value`.
+
+---
+
 ## [1.4.0] - 2026-06-22
 
 ### Added

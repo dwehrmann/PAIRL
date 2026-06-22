@@ -43,6 +43,16 @@ Each example includes:
    - `#edit` records for aggregated file changes
    - Shows ~95% token reduction vs raw tool-use messages
 
+7. **[07-turn-attribution.pairl](07-turn-attribution.pairl)** | [Rendered](07-turn-attribution.rendered.md)
+   - Multi-turn history compressed into one body (v1.3)
+   - In-body turn markers `#u1`/`#a2` attribute records to speakers
+   - Deterministic attribution — no speaker inference
+
+8. **[08-columnar-report.pairl](08-columnar-report.pairl)** | [Rendered](08-columnar-report.rendered.md)
+   - Same report as example 05, re-encoded with **columnar record blocks (v1.5)**
+   - `#evid[claim,src,conf]` / `#quota[type,total,used,rem]` declare the schema once + positional rows
+   - Combined with v1.4 short refs (`s1`…`s5`); ~40% fewer tokens, lossless
+
 ---
 
 ## Understanding PAIRL Rendering
@@ -137,7 +147,7 @@ The examples form a coherent conversation:
 
 Reference implementations should:
 - Parse all examples without errors
-- Validate against rules V1-V9
+- Validate against rules V1-V12
 - Correctly canonicalize for hashing
 - Extract facts, refs, evidence accurately
 
@@ -173,6 +183,8 @@ python ../tools/validator.py 01-basic-request.pairl
 - Examples `01-04` are **v1.0 compatible** (no economic features)
 - Example `05` uses **v1.1 features** (@budget, #cost, #quota)
 - Example `06` uses **v1.2 features** (#call, #ret, #think, #edit)
+- Example `07` uses **v1.3 features** (in-body turn markers)
+- Example `08` uses **v1.5 features** (columnar record blocks) + v1.4 short refs
 - v1.0 parsers can read all examples (may ignore v1.1/v1.2 fields)
 
 ---

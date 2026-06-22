@@ -1,8 +1,8 @@
-# PAIRL v1.4 — Protocol for Agent Intermediate Representation (Lite)
+# PAIRL v1.5 — Protocol for Agent Intermediate Representation (Lite)
 
 A compact, human-readable, machine-parseable agent-to-agent message format designed for:
 
-* **Token efficiency** (short records, *short session-local message references* instead of long IDs, pointers instead of copied context),
+* **Token efficiency** (short records, *short session-local message references* instead of long IDs, *columnar record blocks* that declare a key schema once instead of repeating it per record, pointers instead of copied context),
 * **Reliability** (lossless facts + evidence + validation),
 * **Economy** (native budget and quota management),
 * **Tool-use compression** (compact representation of tool-call/result chains),
@@ -154,7 +154,7 @@ Records appear after the empty line. One logical record per line.
 
 ### 3.1 Record Types
 
-PAIRL v1.4 defines:
+PAIRL v1.5 defines:
 
 **Turn marker (v1.3)**
 * `#u1` / `#a2` / `#s3` — compact conversation-turn marker (speaker letter + order) within the body (§3.3)
@@ -181,6 +181,8 @@ PAIRL v1.4 defines:
 * `#s <phase>:<progress>` — agent cognitive state (no `@rid` required)
 
 All records may optionally include `@m=<msg-id>` (turn binding, §3.3) and/or `@rid=<rid>` at the end. Canonical trailing order is `@m=` then `@rid=`.
+
+**Columnar form (v1.5)**: when several records of the same type share a key schema, they MAY be written as a single columnar block (§3.4) — `#type[col,col,...]` declares the keys once, then one positional row per record — instead of repeating `key=` on every line. This is an optional, lossless alternative encoding; the `key=value` form remains fully valid.
 
 ### 3.2 Record IDs (RID)
 
@@ -230,6 +232,65 @@ qst{t=audit_log,s=f,l=1,m=0} @rid=a4
 ```
 
 Here `tool=aws_dms` is unambiguously the assistant's (under `#a2`) and `audit_table` the user's (under `#u3`) — no speaker inference required, and no per-record tags needed.
+
+### 3.4 Columnar Record Blocks — v1.5
+
+When a message carries several records of the **same type that share a key schema** (e.g. five `#evid` rows, each with `claim`/`src`/`conf`), repeating the type tag and every `key=` on each line is pure structural overhead. A columnar block declares the schema once and lists the values positionally.
+
+**Form**:
+
+```
+#<type>[<col1>,<col2>,…,<colN>]
+<row>
+<row>
+…
+```
+
+* The **header** `#<type>[…]` names a record type with a **fixed key schema** (e.g. `evid` → `claim,src,conf`; `cost` → `val,cur,model,note`; `quota` → `type,total,used,rem`; tool records `call`/`ret`) and its **column order** as a comma-separated list of keys (no spaces).
+* Each following **row** is one record: its space-separated fields map **positionally** to the declared columns. A row has exactly N fields for N columns.
+* The block continues over consecutive lines and **ends** at the next line that starts with `#` (a new record or block header), a blank line, or the message terminator `---`.
+
+A columnar row is **semantically identical** to the equivalent `key=value` record:
+
+```
+#evid[claim,src,conf]
+"LLM costs decreased 60% in 2025" s1 0.85
+"Multi-agent systems adoption increased 300%" s2 0.90
+```
+
+is exactly equivalent to:
+
+```
+#evid claim="LLM costs decreased 60% in 2025" src=s1 conf=0.85
+#evid claim="Multi-agent systems adoption increased 300%" src=s2 conf=0.90
+```
+
+**Field rules** (these matter for unambiguous parsing):
+
+* A field that contains spaces or special characters MUST be a **quoted string** (`"…"`, with `\"` escaping, per §8.2). Any number of columns may be quoted.
+* A non-quoted field is an **atom** (§8.1) — it MUST NOT contain spaces.
+* Therefore each row has exactly N fields once quoted strings are treated as single tokens; a row whose field count ≠ N is a validation error (V12).
+
+**Per-row `@rid` / `@m=`**: a row MAY append `@m=` then `@rid=` after its positional fields (same trailing order as §3.1). Omit them unless the record is referenced — columnar blocks are the common case for *unreferenced* bulk records, so rows are usually tag-free.
+
+**When it applies / when it doesn't**:
+
+* Use it where the **same keys repeat** across records: `#evid`, `#cost`, `#quota`, and tool records.
+* It does **not** apply to records whose key is itself data, i.e. variable per line: `#fact key=value` (every `key` distinct) and `#ref refname=ref:…` (the ref name is the key). Keep those — and one-off `#rule`s — as `key=value`.
+
+**Canonicalization**: columnar blocks are **expanded to their equivalent `#type key=value` records before canonicalization and hashing** (§9.4a). A message therefore hashes identically whether the sender used the columnar or the `key=value` form, so `@hash`, dedup, and caching are unaffected by the choice.
+
+#### Example — the evidence/quota block above as columnar
+
+```
+#evid[claim,src,conf]
+"LLM costs decreased 60% in 2025" s1 0.85
+"Multi-agent systems adoption increased 300%" s2 0.90
+"PAIRL adoption growing in enterprise" s3 0.75
+#quota[type,total,used,rem]
+tokens 50000 38500 11500
+api_calls 25 18 7
+```
 
 ---
 
@@ -736,7 +797,11 @@ message         := header-block LF body
 header-block    := header-line *(LF header-line)
 body            := *(record-line LF) [record-line]
 header-line     := "@" hkey SP hval
-record-line     := marker-record / msg-record / intent-record / hash-record
+record-line     := marker-record / msg-record / intent-record / hash-record / col-header / col-row
+
+col-header      := "#" ident "[" key *("," key) "]"        ; v1.5 columnar block header, e.g. #evid[claim,src,conf]
+col-row         := field *(SP field) [SP mtag] [SP rid]     ; one positional record; only valid inside a block
+field           := atom / quoted
 
 marker-record   := "#" ("u" / "a" / "s") 1*7(DIGIT)        ; compact turn marker, e.g. #u1
 msg-record      := "#msg" SP msgid SP "r=" role SP "parent=" (msgid / "-")  ; verbose long form
@@ -771,6 +836,7 @@ ident           := 1*(LOWER / DIGIT / "_" / "-")
 ```
 
 Notes:
+* `col-header` / `col-row` (v1.5, §3.4): a `col-header` opens a columnar block; every following line that is non-blank and does **not** start with `#` is a `col-row` belonging to that block. The block ends at the next line starting with `#`, a blank line, or `---`. Each `col-row` MUST have exactly as many fields (quoted strings count as one field) as the header has columns. Columnar blocks expand to `hash-record`s before canonicalization (§9.4a).
 * `@deps` value uses `deps-val` (comma-separated refs, no spaces).
 * `ref` permits `#<rid>` fragments for record references.
 * v1.4 session-local refs use the `@<id>` / `@<id>#<rid>` form; cross-session refs use the fully-qualified `ref:msg:<sid>:<id>[#<rid>]` form (a `long-ref`).
@@ -837,6 +903,12 @@ Inside `{...}`:
    * `#fact key=value @rid=f1` (rid optional)
    * `#cost val=0.02 cur=USD @rid=c1`
 
+### 9.4a Columnar Block Expansion (v1.5)
+
+Before canonicalization, every columnar block (§3.4) is **expanded** to the equivalent sequence of `#type key=value` records: for header `#T[c1,…,cN]` and row `v1 … vN`, emit `#T c1=v1 … cN=vN` (preserving any trailing `@m=`/`@rid=`), in row order. A field that was a quoted string stays quoted; an atom stays unquoted. The expanded records are then formatted per §9.4.
+
+Consequently a message hashes identically whether it was sent in columnar or `key=value` form — the columnar block is a transport-level encoding, not a distinct canonical object.
+
 ### 9.5 Line Endings
 
 Use `\n` (LF). For hashing, canonical bytes are UTF-8 with LF line endings.
@@ -901,7 +973,7 @@ message's own id) remains **accepted** for back-compatibility.
 
 ---
 
-## 11. Validation Rules (v1.3)
+## 11. Validation Rules (v1.5)
 
 PAIRL validators should support at least two modes:
 
@@ -1037,6 +1109,18 @@ If turn markers are present (compact `#u1`/`#a2`/`#s3` or verbose `#msg`):
 * Malformed marker, duplicate turn id, or dangling `@m=`/`parent=` reference: error.
 * Record with no `@m=` while markers are in use: allowed (grouping/positional rule, §3.3).
 * Turn markers do not require `@rid`.
+
+### V12 — Columnar Block Integrity (v1.5)
+
+If a columnar block (§3.4) is present:
+
+* The header must match `#<type>[<key>,…]` — a fixed-schema `#`-record type (§3.4; not `#fact`/`#ref`, whose key is data) and a non-empty, comma-separated list of column keys (each a valid `key`, §8.3), with no duplicate column names.
+* Every row in the block must have **exactly as many fields as the header declares columns**, where a quoted string counts as one field. Too few or too many fields: error.
+* Fields containing spaces or special characters must be quoted (`\"` escaping); an unquoted field must be a valid atom (§8.1).
+* After expansion (§9.4a), the resulting records must themselves satisfy that type's rules (e.g. an expanded `#evid` still requires `claim`/`src`/`conf`; V2 applies).
+* Per-row `@m=`/`@rid=` follow the same rules as V6/V11.
+
+**Error behavior**: malformed header, column-count mismatch, duplicate column key, or an unquoted field containing spaces: error.
 
 ---
 
