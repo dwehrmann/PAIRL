@@ -26,7 +26,7 @@ Each example includes:
    - Includes cost and quota tracking (v1.1)
 
 4. **[04-threaded-summary.pairl](04-threaded-summary.pairl)** | [Rendered](04-threaded-summary.rendered.md)
-   - Message threading with @parent
+   - Message threading with @p (parent)
    - Summarizes previous conversation
    - References specific records from parent messages
 
@@ -78,8 +78,9 @@ See [SPEC.md §12](../SPEC.md) for full rendering guidelines.
 Every PAIRL message has:
 
 1. **Header block** (starts with `@`)
-   - Required: `@v`, `@mid`, `@ts`
-   - Optional: `@root`, `@parent`, `@deps`, `@budget`, `@limit`, `@hash`
+   - Required: `@v`, `@id` (session-local message id), `@ts`
+   - Optional: `@sid` (thread/session id, declared once on the root), `@p` (parent), `@root` (omitted when derivable via `@p`), `@deps`, `@budget`, `@limit`, `@hash`
+   - v1.3 long forms `@mid`/`@parent` (with `ref:msg:<ULID>`) remain accepted
 
 2. **Empty line** (separator)
 
@@ -143,7 +144,7 @@ Reference implementations should:
 ### For Templates
 
 Copy and modify these examples for your own use cases:
-- Replace `@mid` with your own ULIDs
+- Replace `@id` with your own session-local ids (and `@sid` with your thread ULID on the root)
 - Update `@ts` timestamps
 - Modify `#fact` and `#ref` values
 - Adjust intent parameters to match your style

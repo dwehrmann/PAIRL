@@ -8,10 +8,9 @@
 
 ```
 @v 1
-@mid ref:msg:01JH0Q7B9C0D1E2F3G4H5I6J7K8L
+@id m3
 @ts 2026-01-31T16:35:15.789+01:00
-@root ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
-@parent ref:msg:01JH0Q7A8B9C2D3E4F5G6H7I8J9K
+@p m2
 
 cmp{t=research,s=f,l=2,m=+,a=i} @rid=a1
 #fact topic=ai_trends_2026 @rid=f1
@@ -30,8 +29,8 @@ cmp{t=research,s=f,l=2,m=+,a=i} @rid=a1
 
 **From:** Research Agent (01JH0Q7B9C0D1E2F3G4H5I6J7K8L)
 **Date:** January 31, 2026 at 4:35 PM CET
-**In reply to:** [Research proposal](ref:msg:01JH0Q7A8B9C2D3E4F5G6H7I8J9K)
-**Thread:** [Root message](ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B)
+**In reply to:** [Research proposal](@m2)
+**Thread:** [Root message](@m1)
 
 ---
 

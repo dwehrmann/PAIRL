@@ -8,10 +8,9 @@
 
 ```
 @v 1
-@mid ref:msg:01JH0Q7D1E2F3G4H5I6J7K8L9M0N
+@id m5
 @ts 2026-01-31T17:00:00.000+01:00
-@root ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
-@parent ref:msg:01JH0Q7C0D1E2F3G4H5I6J7K8L9M
+@p m4
 @budget 0.50USD
 @hash ref:hash:sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 
@@ -45,8 +44,8 @@ rpt{t=final_report,s=f,l=3,m=+,a=c,u=lo,fmt=par} @rid=a1
 
 **From:** Report Agent (01JH0Q7D1E2F3G4H5I6J7K8L9M0N)
 **Date:** January 31, 2026 at 5:00 PM CET
-**In reply to:** [Thread summary](ref:msg:01JH0Q7C0D1E2F3G4H5I6J7K8L9M)
-**Thread:** [Root message](ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B)
+**In reply to:** [Thread summary](@m4)
+**Thread:** [Root message](@m1)
 **Budget available:** $0.50 USD
 
 ---

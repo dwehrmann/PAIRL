@@ -8,7 +8,8 @@
 
 ```
 @v 1
-@mid ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
+@id m1
+@sid ref:sess:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
 @ts 2026-01-31T16:20:01.123+01:00
 
 req{t=specs,s=f,l=2,m=+,a=c} @rid=a1

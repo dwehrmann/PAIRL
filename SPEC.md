@@ -1,8 +1,8 @@
-# PAIRL v1.3 — Protocol for Agent Intermediate Representation (Lite)
+# PAIRL v1.4 — Protocol for Agent Intermediate Representation (Lite)
 
 A compact, human-readable, machine-parseable agent-to-agent message format designed for:
 
-* **Token efficiency** (short records, pointers instead of copied context),
+* **Token efficiency** (short records, *short session-local message references* instead of long IDs, pointers instead of copied context),
 * **Reliability** (lossless facts + evidence + validation),
 * **Economy** (native budget and quota management),
 * **Tool-use compression** (compact representation of tool-call/result chains),
@@ -38,11 +38,11 @@ Large content should not be repeated in-line. Instead, reference it via `ref:` p
 
 ### 0.3 Message Scope
 
-PAIRL messages are **atomic and immutable** once finalized. Each message represents a complete communication unit. Messages can reference other messages via `@parent` and `@deps`, forming a DAG (directed acyclic graph) of communication.
+PAIRL messages are **atomic and immutable** once finalized. Each message represents a complete communication unit. Messages can reference other messages via `@p` and `@deps`, forming a DAG (directed acyclic graph) of communication.
 
 ### 0.4 In-Body Turn Attribution (v1.3)
 
-Message-level threading (§2.2) attaches one header — including `@parent`/`@deps` — to one communication unit. But a common use is compressing an **entire multi-turn conversation history into a single body** (e.g. a gateway encoding a chat transcript), where there is no per-turn header to say *who* spoke or *which turn* a record came from. Inferring the speaker from intent type and line order is lossy and causes **attribution drift** (records assigned to the wrong speaker, turns reordered).
+Message-level threading (§2.2) attaches one header — including `@p`/`@deps` — to one communication unit. But a common use is compressing an **entire multi-turn conversation history into a single body** (e.g. a gateway encoding a chat transcript), where there is no per-turn header to say *who* spoke or *which turn* a record came from. Inferring the speaker from intent type and line order is lossy and causes **attribution drift** (records assigned to the wrong speaker, turns reordered).
 
 v1.3 closes this with **in-body turn markers** (§3.3): a compact, header-free way to declare each turn's speaker and order inside the body. The canonical form is a single short token per turn — `#u1`, `#a2`, `#s3` (the letter is the speaker, the number is the order) — and records are attributed by **section grouping**: a record belongs to the most recent turn marker above it. This is the only PAIRL construct that carries a **speaker** — message headers identify and thread messages but never encode who authored them (that has been transport metadata).
 
@@ -69,14 +69,14 @@ A message is UTF-8 text with:
 * an **empty line**,
 * a **Body**: a sequence of Records.
 
-### Example (v1.1):
+### Example (v1.4):
 
 ```
 @v 1
-@mid ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
+@id m3
+@sid ref:sess:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
 @ts 2026-01-31T16:20:01.123+01:00
-@root ref:msg:01JH0Q6YF1Z3QK...
-@parent ref:msg:01JH0Q6X9R8...
+@p m2
 @budget 0.10USD
 @hash ref:hash:sha256:9c1a0f...e3
 
@@ -84,9 +84,16 @@ req{t=analysis,s=f,l=2,m=+,a=c} @rid=a1
 #fact ask=market_analysis @rid=f1
 #fact format=report @rid=f2
 #ref input=ref:doc:sha256:9c1a... @rid=r1
+#ref prior_brief=@m1#a1
 #quota type=tokens total=100000 used=5000 rem=95000 @rid=q1
 #cost val=0.02 cur=USD model=gpt-4o @rid=c1
 ```
+
+`@id m3` is a **session-local** message id; `@sid` declares the thread's global
+session id once. `@p m2` references the parent by its short id; `@root` is omitted
+because the parent *is* the root's predecessor chain (see §2.2). `@m1#a1` is a
+short record reference within the session. The long `ref:msg:<ULID>` form (v1.3) is
+still accepted for cross-session/legacy references — see §10.
 
 ---
 
@@ -96,16 +103,23 @@ Header lines start with `@`.
 
 ### 2.1 Required Header Fields
 
-* `@v <int>` — protocol version. v1.1 uses `1`.
-* `@mid <ref>` — unique message identifier, must be `ref:msg:<id>`.
+* `@v <int>` — protocol version. v1.x uses `1`.
+* `@id <id>` — message identifier. In v1.4 this is a **session-local short id** (e.g. `m1`, `m4`), unique within its thread. Replaces v1.3's `@mid ref:msg:<ULID>`.
 * `@ts <iso8601>` — timestamp with timezone offset and subsecond precision (milliseconds recommended).
+
+> **Back-compat:** the long form `@mid ref:msg:<ULID>` (v1.3) is still accepted. A message MUST carry exactly one of `@id` or `@mid`. New messages SHOULD use `@id`.
 
 ### 2.2 Optional Header Fields (General)
 
-* `@root <ref:msg:...>` — root message of the thread/job.
-* `@parent <ref:msg:...>` — direct predecessor (reply/continuation).
-* `@deps <ref:msg:...>,<ref:msg:...>` — additional dependencies (DAG edges).
-* `@hash <ref:hash:sha256:...>` — integrity hash over canonicalized message bytes.
+**Threading (v1.4 short form — session-local ids):**
+
+* `@sid <ref:sess:<ULID>>` — **session/thread id**, a globally-unique anchor declared **once on the root message** (descendants inherit it). Establishes the namespace that makes session-local `@id` values globally resolvable. OMIT for self-contained threads that need no cross-session addressing.
+* `@p <id>` — direct predecessor's session-local id (reply/continuation). Replaces v1.3 `@parent`.
+* `@root <id>` — root message's session-local id. **OMIT when the root is the parent** (i.e. `@p` already points at the root) — the common flat-thread case (§9.1a derivable-field rule).
+* `@deps <id>,<id>` — additional dependency ids (DAG edges). **OMIT ids already given by `@p` or `@root`.**
+* `@hash <ref:hash:sha256:...>` — integrity hash over canonicalized message bytes (unchanged).
+
+> **Back-compat:** the long forms `@root`/`@parent`/`@deps` with `ref:msg:<ULID>` values (v1.3) remain valid and are used for cross-session edges (a dependency in another thread carries its own `@sid` namespace and is referenced fully-qualified — see §10).
 
 ### 2.3 Economic Header Fields (v1.1)
 
@@ -117,9 +131,14 @@ Header lines start with `@`.
 
 ### 2.4 Message ID Recommendations
 
-* Prefer **ULID** for `@mid` (sortable, collision-safe, 26 characters).
-* Prefer `@hash` = `sha256(canonical_message_bytes_without_@hash)` for immutability/audit (see §9.6).
-* Using `@mid` only is acceptable; using `@mid` + `@hash` is best practice.
+**v1.4 — separate identity (cheap) from integrity (when needed).** Threading uses
+short session-local ids; global uniqueness and integrity are added only where
+required, instead of paying a 26-char ULID on every message reference.
+
+* `@id` — short session-local token. Recommended alphabet base36 `[a-z0-9]`, 1–8 chars; a simple per-thread counter prefixed by a letter (`m1`, `m2`, …) is canonical. Must be unique within its thread.
+* `@sid` — declare a **ULID** once per thread (on the root) when the thread must be addressable across sessions; descendants inherit it. A self-contained message/thread MAY omit `@sid` entirely.
+* `@hash` = `sha256(canonical_message_bytes_without_@hash)` for immutability/audit (see §9.6) — add only where an audit trail is required.
+* Rationale: a 26-char ULID repeated across `@mid`/`@root`/`@parent` and every record ref is the dominant structural overhead; short session-local ids remove it while `@sid`/`@hash` preserve global addressing and integrity exactly where they are actually used.
 
 ### 2.5 Timestamp Precision
 
@@ -135,7 +154,7 @@ Records appear after the empty line. One logical record per line.
 
 ### 3.1 Record Types
 
-PAIRL v1.3 defines:
+PAIRL v1.4 defines:
 
 **Turn marker (v1.3)**
 * `#u1` / `#a2` / `#s3` — compact conversation-turn marker (speaker letter + order) within the body (§3.3)
@@ -167,7 +186,7 @@ All records may optionally include `@m=<msg-id>` (turn binding, §3.3) and/or `@
 
 `@rid=<rid>` assigns a short identifier to a record (e.g., `a1`, `f2`, `r1`).
 
-**RID scope**: RIDs are **message-scoped**. The same RID can appear in different messages without collision. Cross-message references use the full `ref:msg:<mid>#<rid>` format.
+**RID scope**: RIDs are **message-scoped**. The same RID can appear in different messages without collision. Cross-message references within a session use the short `@<id>#<rid>` form (e.g. `@m1#a1`); cross-session references use the fully-qualified `ref:msg:<sid>:<id>#<rid>` form (§10).
 
 **RID rules**:
 * Case-insensitive ASCII recommended; canonical form is lowercase.
@@ -387,7 +406,7 @@ Format:
 ```
 #ref specs=ref:doc:sha256:9c1a...
 #ref source=ref:url:ap:2026-01-31
-#ref parent=ref:msg:01JH0Q6...
+#ref prior=@m1#a2
 #ref input=ref:doc:sha256:9c1a0f2b3e4d5c6f7a8b9c0d1e2f3a4b
 ```
 
@@ -739,9 +758,10 @@ value           := atom / quoted
 quoted          := DQUOTE *(%x20-21 / %x23-5B / %x5D-10FFFF / '\"') DQUOTE
 atom            := 1*(ALNUM / ":" / "." / "_" / "/" / "@" / "+" / "-")
 
-ref             := short-ref / long-ref
+ref             := sloc-ref / short-ref / long-ref
+sloc-ref        := "@" msgid ["#" ridfrag]                  ; v1.4 session-local msg/record ref, e.g. @m1 / @m1#a2
 short-ref       := "ref:" ns ":" ridpart ["#" ridfrag]
-long-ref        := "ref:" ns ":" rtype ":" ridpart ["#" ridfrag]
+long-ref        := "ref:" ns ":" rtype ":" ridpart ["#" ridfrag]  ; also the v1.4 fully-qualified form ref:msg:<sid>:<id>
 ns              := ident
 rtype           := ident
 ridpart         := 1*(VCHAR - SP)
@@ -753,8 +773,9 @@ ident           := 1*(LOWER / DIGIT / "_" / "-")
 Notes:
 * `@deps` value uses `deps-val` (comma-separated refs, no spaces).
 * `ref` permits `#<rid>` fragments for record references.
+* v1.4 session-local refs use the `@<id>` / `@<id>#<rid>` form; cross-session refs use the fully-qualified `ref:msg:<sid>:<id>[#<rid>]` form (a `long-ref`).
 * Both `ref:<ns>:<id>` and `ref:<ns>:<type>:<id>` are valid.
-* Message identifiers in `ref:msg:<id>` may contain uppercase (e.g., ULID payload).
+* Message identifiers (`@id`, and the ULID payload in `@sid`/legacy `ref:msg:<ULID>`) may contain uppercase.
 
 ---
 
@@ -771,14 +792,29 @@ Canonicalization produces the canonical message used for:
 Headers must appear in this order if present:
 
 1. `@v`
-2. `@mid`
-3. `@ts`
-4. `@root`
-5. `@parent`
-6. `@deps`
-7. `@budget` (v1.1)
-8. `@limit` (v1.1)
-9. `@hash`
+2. `@id` (v1.4) / `@mid` (v1.3 long form)
+3. `@sid` (v1.4)
+4. `@ts`
+5. `@root`
+6. `@p` (v1.4) / `@parent` (v1.3 long form)
+7. `@deps`
+8. `@budget` (v1.1)
+9. `@limit` (v1.1)
+10. `@hash`
+
+### 9.1a Derivable Threading Fields (v1.4)
+
+To avoid redundant bytes, canonical v1.4 messages **OMIT threading fields whose value
+is derivable**:
+
+* OMIT `@root` when it is reachable by walking the `@p` chain (i.e. `@root` lies on the
+  parent spine — the common case in any linear or tree thread). Keep `@root` only when a
+  message attaches to the thread via `@deps` with no `@p` path to the root.
+* OMIT from `@deps` any id already present as `@p` or `@root`.
+
+A consumer reconstructs the omitted edges by walking `@p` to the root. These omissions
+are canonical: a message and its de-duplicated form must hash identically, so the rule
+is applied before §9.6.
 
 ### 9.2 Blank Line Rule
 
@@ -823,22 +859,35 @@ Verification follows the same process: recompute from the message with `@hash` r
 
 ## 10. References (Message-Level and Record-Level)
 
-### 10.1 Message References
+PAIRL v1.4 has two reference scopes. Use the **short session-local** form by default;
+fall back to the **fully-qualified** form only across session boundaries.
 
-A message is referenceable as:
+### 10.1 Session-Local References (default)
 
-* `ref:msg:<mid>`
+Within a thread, reference by short message id:
 
-### 10.2 Record References
-
-A record is referenceable as:
-
-* `ref:msg:<mid>#<rid>`
-
-**Example**:
+* Message: `@<id>` — e.g. `@m1`
+* Record: `@<id>#<rid>` — e.g. `@m1#a2`
 
 ```
-#ref reply_to=ref:msg:01JH0Q6Z7F...#a2
+#ref reply_to=@m2#a2
+```
+
+These resolve within the current thread (the namespace established by `@sid` on the
+root, or implicitly the self-contained thread).
+
+### 10.2 Fully-Qualified References (cross-session)
+
+To reference a message or record in **another** session, qualify with that session's id:
+
+* Message: `ref:msg:<sid>:<id>` — e.g. `ref:msg:01JH0Q6Z7F8K...:m1`
+* Record: `ref:msg:<sid>:<id>#<rid>` — e.g. `ref:msg:01JH0Q6Z7F8K...:m1#a2`
+
+The v1.3 long form `ref:msg:<ULID>` / `ref:msg:<ULID>#<rid>` (where the ULID was the
+message's own id) remains **accepted** for back-compatibility.
+
+```
+#ref upstream=ref:msg:01JH0Q6Z7F8K...:m1#a2
 ```
 
 ### 10.3 Reference Resolution
@@ -883,19 +932,22 @@ Every `#evid` must include:
 
 ### V3 — Ref Format
 
-All refs must match:
+All refs must match one of:
 
-* Short form: `ref:<ns>:<id>`
-* Long form: `ref:<ns>:<type>:<id>`
-* Record reference form: either short or long ref with `#<rid>`
+* Session-local message/record ref (v1.4): `@<id>` or `@<id>#<rid>`
+* Fully-qualified message/record ref (v1.4): `ref:msg:<sid>:<id>` or `ref:msg:<sid>:<id>#<rid>`
+* Resource ref (short): `ref:<ns>:<id>`
+* Resource ref (long): `ref:<ns>:<type>:<id>`
+* Record reference form: any of the above with `#<rid>`
+* v1.3 legacy: `ref:msg:<ULID>` / `ref:msg:<ULID>#<rid>` (accepted)
 * No spaces in the ref value.
-* `@deps` must be a comma-separated list of valid refs.
+* `@deps` must be a comma-separated list of session-local `@<id>` values (or legacy refs for cross-session edges).
 
 ### V4 — Thread Integrity (Optional Strict)
 
-If `@parent` is present and `strict_refs=true`:
+If `@p` (or legacy `@parent`) is present and `strict_refs=true`:
 
-* Referenced parent message must be resolvable in the message store/log, otherwise error.
+* Referenced parent message must be resolvable in the thread (by session-local `@id`) or message store/log, otherwise error.
 
 ### V5 — Canonicalization Safety (Hash Mode)
 
@@ -912,7 +964,7 @@ Within a single message:
 
 ### V7 — Circular Dependency Detection
 
-If `@deps` or `@parent` create a cycle in the message DAG:
+If `@deps` or `@p` (or legacy `@parent`) create a cycle in the message DAG:
 
 * Error in strict mode.
 * Warning in loose mode.
@@ -934,7 +986,7 @@ If `@budget` is present:
 ref{t=analysis,m=-} @rid=a1
 #fact reason=budget_exceeded @rid=f1
 #cost val=0.08 cur=USD note="projected cost" @rid=c1
-#ref budget_limit=ref:msg:01JH...#budget @rid=r1
+#ref budget_limit=@m1#budget @rid=r1
 
 # Scenario 2: Budget check, bid for approval
 bid{t=analysis,s=f,l=1} @rid=a1
@@ -1028,7 +1080,7 @@ PAIRL implementations should define error handling for:
 
 ### 13.3 Recommended Error Behavior
 
-* **Missing required headers** (`@v`, `@mid`, `@ts`): hard error
+* **Missing required headers** (`@v`, `@id`/`@mid`, `@ts`): hard error
 * **Malformed records**: skip record, log warning (loose mode) or error (strict mode)
 * **Unresolvable refs**: log warning, continue processing (resolution is out-of-scope)
 * **Hash mismatch**: hard error (integrity violation)
@@ -1053,7 +1105,7 @@ Implementations should provide structured error output including:
 ### 14.1 Protocol Versioning
 
 * PAIRL uses semantic versioning: `MAJOR.MINOR.PATCH`
-* Current version: **1.3**
+* Current version: **1.4**
 * `@v` header contains **major version only**
 
 ### 14.2 Version Compatibility
@@ -1108,6 +1160,18 @@ v1.3 adds:
 * Validation rule V11 (Turn Marker Integrity)
 * **Backward compatible**: v1.2 parsers can ignore turn markers and `@m=` tags; bodies without them are unchanged
 
+### 14.8 v1.4 Changes
+
+v1.4 shortens **agent-to-agent message references** to cut structural overhead (the
+dominant cost on threaded traffic — a 26-char ULID was repeated across `@mid`,
+`@root`, `@parent`, and every record ref):
+
+* Session-local short message ids: `@id` (replaces `@mid ref:msg:<ULID>`), `@p` (replaces `@parent`), short `@root`/`@deps` (§2.1–§2.2)
+* `@sid` declares the thread's global ULID **once** on the root; identity is separated from integrity (`@hash`) so a ULID is paid only where actually needed (§2.4)
+* Session-local references `@<id>` / `@<id>#<rid>`; fully-qualified `ref:msg:<sid>:<id>[#<rid>]` for cross-session (§10)
+* Derivable-field omission: drop `@root` when it equals `@p`, and `@deps` entries already implied by `@p`/`@root` (§9.1a)
+* **Back-compatible**: the v1.3 long forms (`@mid`/`@parent`/`@root`/`@deps` with `ref:msg:<ULID>`, and `ref:msg:<ULID>#<rid>` record refs) remain accepted; a message carries exactly one of `@id`/`@mid`
+
 ---
 
 ## 15. Implementation Recommendations
@@ -1130,7 +1194,7 @@ These can be signaled via `#rule`:
 
 * Messages should be stored immutably (append-only log)
 * `@hash` enables content-addressable storage
-* `@mid` (ULID) enables time-ordered indexing
+* `@sid` (ULID) enables time-ordered thread indexing; `@id` orders messages within a thread
 * Economic data (`#cost`, `#quota`) enables cost accounting and auditing
 
 ### 15.3 Transport Agnostic
@@ -1158,10 +1222,10 @@ Implementations should consider:
 
 ```
 @v 1
-@mid ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
+@id m3
+@sid ref:sess:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
 @ts 2026-01-31T16:20:01.123+01:00
-@root ref:msg:01JH0Q6YF1Z3QK9P8M7N6L5K4J
-@parent ref:msg:01JH0Q6X9R8S7T6U5V4W3X2Y1Z
+@p m2
 @budget 0.10USD
 @hash ref:hash:sha256:9c1a0f2b3e4d5c6f7a8b9c0d1e2f3a4b
 
@@ -1170,7 +1234,7 @@ req{t=analysis,s=f,l=2,m=+,a=c} @rid=a1
 #fact format=report @rid=f2
 #fact deadline=2026-02-05 @rid=f3
 #ref input=ref:doc:sha256:9c1a0f2b3e4d5c6f7a8b9c0d1e2f3a4b @rid=r1
-#evid claim="Q4 revenue exceeded projections" src=ref:msg:01JH0Q6X9R8S7T6U5V4W3X2Y1Z#f5 conf=0.90 @rid=e1
+#evid claim="Q4 revenue exceeded projections" src=@m2#f5 conf=0.90 @rid=e1
 #quota type=tokens total=100000 used=5000 rem=95000 @rid=q1
 #cost val=0.02 cur=USD model=gpt-4o @rid=c1
 #rule no_new_facts=true @rid=x1
@@ -1194,9 +1258,10 @@ MIME type (proposed): `application/vnd.pairl+utf8`
 ### C.1 Budget-Constrained Research
 
 ```
-# User sets budget
+# User sets budget (root — declares the session id once)
 @v 1
-@mid ref:msg:01JH...A
+@id m1
+@sid ref:sess:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
 @ts 2026-01-31T10:00:00Z
 @budget 0.50USD
 
@@ -1205,10 +1270,10 @@ req{t=research,s=f,l=2} @rid=a1
 
 ---
 
-# Agent checks budget, proposes bid
+# Agent checks budget, proposes bid (@sid inherited; @root derivable via @p)
 @v 1
-@mid ref:msg:01JH...B
-@parent ref:msg:01JH...A
+@id m2
+@p m1
 @ts 2026-01-31T10:00:05Z
 
 bid{t=research,s=f,l=1} @rid=a1
@@ -1220,8 +1285,8 @@ bid{t=research,s=f,l=1} @rid=a1
 
 # User approves, agent executes
 @v 1
-@mid ref:msg:01JH...C
-@parent ref:msg:01JH...B
+@id m3
+@p m2
 @ts 2026-01-31T10:01:00Z
 
 ack{t=research} @rid=a1
@@ -1231,8 +1296,8 @@ ack{t=research} @rid=a1
 
 # Agent reports results + actual cost
 @v 1
-@mid ref:msg:01JH...D
-@parent ref:msg:01JH...C
+@id m4
+@p m3
 @ts 2026-01-31T10:05:30Z
 
 cmp{t=research,s=f,l=2} @rid=a1
@@ -1245,14 +1310,14 @@ cmp{t=research,s=f,l=2} @rid=a1
 
 ```
 @v 1
-@mid ref:msg:01JH...E
-@parent ref:msg:01JH...A
+@id m5
+@p m1
 @ts 2026-01-31T10:00:05Z
 
 ref{t=research,m=-} @rid=a1
 #fact reason=budget_exceeded @rid=f1
 #cost val=0.75 cur=USD note="projected cost for comprehensive analysis" @rid=c1
-#ref budget_limit=ref:msg:01JH...A#budget @rid=r1
+#ref budget_limit=@m1#budget @rid=r1
 ```
 
 ---
@@ -1263,9 +1328,10 @@ A compressed Claude Code session where an agent fixed SSE header handling in a p
 
 ```
 @v 1
-@mid ref:msg:01JK9M2A3B4C5D6E7F8G9H0I1J2K
+@id m7
+@sid ref:sess:01JK9M2A3B4C5D6E7F8G9H0I1J2K
 @ts 2026-02-25T14:30:00.000+01:00
-@parent ref:msg:01JK9M1Z2A3B4C5D6E7F8G9H0I1J
+@p m6
 
 upd{t=proxy_fix,s=t,l=2,m=+,a=i} @rid=a1
 #fact task="fix SSE header stripping in proxy service" @rid=f1

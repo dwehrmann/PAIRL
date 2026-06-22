@@ -21,7 +21,7 @@ Instead of verbose natural language between AI agents, PAIRL uses:
 * **Anti-hallucination guardrails**: strict separation of facts from style
 * **Transport-agnostic**: works anywhere (HTTP, files, message queues, WebSocket)
 
-![Token reduction grows with conversation length: PAIRL compresses short, terse chats by ~20% and long, prose-heavy agent/chat context by ~65%](assets/compression-curve.svg)
+![Modeled net token reduction across conversation length: with the leaner conditional decoder spec, PAIRL compresses short, terse chats by ~47% and long, prose-heavy agent/chat context by ~67%](assets/compression-curve.svg)
 
 ---
 
@@ -29,7 +29,8 @@ Instead of verbose natural language between AI agents, PAIRL uses:
 
 ```
 @v 1
-@mid ref:msg:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
+@id m1
+@sid ref:sess:01JH0Q6Z7F8K4Q2S1R6E2E9A3B
 @ts 2026-01-31T16:20:01.123+01:00
 
 req{t=specs,s=f,l=2,m=+,a=c} @rid=a1
@@ -94,13 +95,16 @@ Don't copy large content. Reference it:
 
 ### 3. Message Threading
 
-Messages form a DAG (directed acyclic graph):
+Messages form a DAG (directed acyclic graph) using **short session-local ids** (v1.4):
 
 ```
-@root ref:msg:01JH0Q6YF1Z3QK9P8M7N6L5K4J
-@parent ref:msg:01JH0Q6X9R8S7T6U5V4W3X2Y1Z
-@deps ref:msg:01JH0Q6W8P7...
+@id m4
+@sid ref:sess:01JH0Q6Z7F8K4Q2S1R6E2E9A3B   # declared once on the root
+@p m3                                        # parent; @root omitted when derivable via @p
+@deps m2
 ```
+
+The 26-char ULID is paid once per thread (`@sid`), not on every reference — see [SPEC §2, §10](SPEC.md).
 
 ### 4. Validation & Integrity
 

@@ -13,8 +13,8 @@
   <rect x="8" y="8" width="804" height="344" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
 
   <!-- header band -->
-  <text x="36" y="44" font-size="20" font-weight="700" fill="#0f172a">The longer the conversation, the more PAIRL compresses</text>
-  <text x="36" y="68" font-size="13" fill="#64748b">Conversational, prose-heavy context compresses far more than short, terse exchanges</text>
+  <text x="36" y="44" font-size="20" font-weight="700" fill="#0f172a">PAIRL compresses across the whole conversation range</text>
+  <text x="36" y="68" font-size="13" fill="#64748b">With the leaner conditional decoder spec, even short, terse chats gain — long chains stay near the ceiling</text>
 
   <!-- y gridlines -->
   <g stroke="#eef2f7" stroke-width="1">
@@ -35,20 +35,21 @@
   <line x1="120" y1="290" x2="120" y2="110" stroke="#cbd5e1" stroke-width="1.5"/>
 
   <!-- area + curve -->
-  <path d="M 120,261 C 170,253 205,247 230,242 C 380,228 480,160 640,134 C 685,128 715,127 740,125 L 740,290 L 120,290 Z" fill="url(#fill)"/>
-  <path d="M 120,261 C 170,253 205,247 230,242 C 380,228 480,160 640,134 C 685,128 715,127 740,125"
+  <path d="M 120,185 C 160,183 195,180 230,177 C 330,170 480,150 640,130 C 685,128 715,126 740,125 L 740,290 L 120,290 Z" fill="url(#fill)"/>
+  <path d="M 120,185 C 160,183 195,180 230,177 C 330,170 480,150 640,130 C 685,128 715,126 740,125"
         fill="none" stroke="url(#curve)" stroke-width="3.5" stroke-linecap="round"/>
 
   <!-- anchor: short regime -->
-  <circle cx="230" cy="242" r="5.5" fill="#6366f1" stroke="#ffffff" stroke-width="2"/>
-  <text x="248" y="240" font-size="15" font-weight="700" fill="#4f46e5">~20%</text>
+  <circle cx="230" cy="177" r="5.5" fill="#6366f1" stroke="#ffffff" stroke-width="2"/>
+  <text x="248" y="175" font-size="15" font-weight="700" fill="#4f46e5">~47%</text>
 
   <!-- anchor: long regime -->
-  <circle cx="640" cy="134" r="5.5" fill="#0891b2" stroke="#ffffff" stroke-width="2"/>
-  <text x="640" y="120" font-size="16" font-weight="800" fill="#0e7490" text-anchor="middle">~65%</text>
+  <circle cx="640" cy="130" r="5.5" fill="#0891b2" stroke="#ffffff" stroke-width="2"/>
+  <text x="640" y="116" font-size="16" font-weight="800" fill="#0e7490" text-anchor="middle">~67%</text>
 
   <!-- x labels -->
   <text x="150" y="312" font-size="12" fill="#64748b">Short, terse chat</text>
   <text x="740" y="312" font-size="12" fill="#64748b" text-anchor="end">Long, prose-heavy chain</text>
   <text x="430" y="338" font-size="12" font-weight="600" fill="#475569" text-anchor="middle">Conversation length &#8594;</text>
+  <text x="740" y="338" font-size="10" fill="#94a3b8" text-anchor="end">Modeled illustration; effect scales with conversation size</text>
 </svg>

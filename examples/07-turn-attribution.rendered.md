@@ -13,7 +13,8 @@ the speaker of every record is unambiguous — the renderer never has to guess.
 
 ```
 @v 1
-@mid ref:msg:01JH0Q8A1B2C3D4E5F6G7H8I9J
+@id m1
+@sid ref:sess:01JH0Q8A1B2C3D4E5F6G7H8I9J
 @ts 2026-06-08T10:15:00.000+02:00
 
 #u1
