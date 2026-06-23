@@ -1,8 +1,8 @@
-use pairl_validator::{parse, validate};
+use pairl::{parse, validate};
 
 const HEADER: &str = "@v 1\n@id m1\n@ts 2026-06-22T10:00:00.000+02:00\n\n";
 
-fn msg(body: &str) -> pairl_validator::Message {
+fn msg(body: &str) -> pairl::Message {
     parse(&format!("{HEADER}{body}"))
 }
 

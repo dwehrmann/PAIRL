@@ -2,7 +2,7 @@
 //! Rust has no canonical hasher (std only), so it checks validity + error
 //! substrings; Python/TypeScript additionally check the SHA-256 hashes.
 
-use pairl_validator::{parse, validate};
+use pairl::{parse, validate};
 
 type Case = (String, bool, bool, String, String); // name, strict, valid, hash, substr
 

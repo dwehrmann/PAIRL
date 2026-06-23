@@ -1,7 +1,12 @@
 {
-  "name": "@pairl/pairl",
+  "name": "pairl",
   "version": "1.5.0",
-  "description": "PAIRL v1.5 reference library — parse, serialize, validate, canonicalize, render",
+  "description": "PAIRL v1.5 reference library \u2014 parse, serialize, validate, canonicalize, render",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dwehrmann/PAIRL",
+    "directory": "impl/typescript"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,7 +32,7 @@
     "compression",
     "llm"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@types/node": "^26.0.0",
     "typescript": "^5.6.0",

@@ -1,4 +1,4 @@
-# pairl-validator (Rust)
+# pairl (Rust)
 
 Reference parser and validator for the [PAIRL v1.5](../../SPEC.md) protocol —
 rules V1–V12, including v1.3 turn markers, v1.4 short references, and v1.5
@@ -15,7 +15,7 @@ cargo run --bin pairl-validate -- [--strict] message.pairl
 ## Library
 
 ```rust
-use pairl_validator::{parse, validate};
+use pairl::{parse, validate};
 
 let msg = parse(&std::fs::read_to_string("message.pairl")?);
 let res = validate(&msg, false); // strict = false

@@ -1,4 +1,4 @@
-# @pairl/pairl (TypeScript)
+# pairl (TypeScript)
 
 Reference library for the [PAIRL v1.5](../../SPEC.md) protocol: parse, serialize,
 validate (rules V1–V12), canonicalize + SHA-256 hashing, and a deterministic
@@ -7,13 +7,13 @@ human-readable renderer. ESM, Node ≥ 18 (uses `node:crypto` for hashing).
 ## Install
 
 ```bash
-npm install @pairl/pairl
+npm install pairl
 ```
 
 ## Usage
 
 ```ts
-import { parse, validate, computeHash, render, encode, decode } from "@pairl/pairl";
+import { parse, validate, computeHash, render, encode, decode } from "pairl";
 
 const msg = decode(pairlText);          // = parse(pairlText)
 

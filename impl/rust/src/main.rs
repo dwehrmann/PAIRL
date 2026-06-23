@@ -2,7 +2,7 @@
 
 use std::process::ExitCode;
 
-use pairl_validator::{parse, validate};
+use pairl::{parse, validate};
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();

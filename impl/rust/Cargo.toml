@@ -1,12 +1,14 @@
 [package]
-name = "pairl-validator"
+name = "pairl"
 version = "1.5.0"
 edition = "2021"
 description = "PAIRL v1.5 parser and validator (rules V1–V12)"
-license = "MIT"
+license = "Apache-2.0"
+repository = "https://github.com/dwehrmann/PAIRL"
+readme = "README.md"
 
 [lib]
-name = "pairl_validator"
+name = "pairl"
 path = "src/lib.rs"
 
 [[bin]]
