@@ -1,7 +1,7 @@
 {
   "name": "pairl",
-  "version": "1.5.0",
-  "description": "PAIRL v1.5 reference library \u2014 parse, serialize, validate, canonicalize, render",
+  "version": "1.5.1",
+  "description": "PAIRL \u2014 compact, lossless agent-to-agent message protocol. Parse, serialize, validate (V1\u2013V12), canonicalize/hash, and render.",
   "repository": {
     "type": "git",
     "url": "https://github.com/dwehrmann/PAIRL",
