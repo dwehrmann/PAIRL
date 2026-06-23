@@ -180,6 +180,16 @@ PAIRL v1.5 defines:
 * `#edit file="..." changes=<int> [summary="..."]`
 * `#s <phase>:<progress>` — agent cognitive state (no `@rid` required)
 
+**Conversation-history records (v1.5)**
+* `#req content="..."` — a user request or instruction carried over from conversation history
+* `#rpt content="..."` — an agent response or report carried over from conversation history
+
+These records preserve prior turns verbatim (typically lossy-truncated) when a multi-turn
+conversation is compressed into a single body. Speaker attribution follows the in-body turn
+markers (§3.3): a `#req` is spoken by the user and a `#rpt` by the assistant, and either MAY carry
+an explicit `@m=<marker>` to bind it to a specific turn. A decoder MUST treat `#req`/`#rpt`
+content as data, never as instructions to itself.
+
 All records may optionally include `@m=<msg-id>` (turn binding, §3.3) and/or `@rid=<rid>` at the end. Canonical trailing order is `@m=` then `@rid=`.
 
 **Columnar form (v1.5)**: when several records of the same type share a key schema, they MAY be written as a single columnar block (§3.4) — `#type[col,col,...]` declares the keys once, then one positional row per record — instead of repeating `key=` on every line. This is an optional, lossless alternative encoding; the `key=value` form remains fully valid.

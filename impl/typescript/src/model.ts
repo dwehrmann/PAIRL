@@ -8,7 +8,7 @@ export const FIXED_SCHEMA_TYPES = new Set(["evid", "rule", "cost", "quota", "cal
 export const COLUMNAR_FORBIDDEN = new Set(["fact", "ref"]);
 
 export interface PairlRecord {
-  kind: string; // fact, ref, evid, rule, cost, quota, call, ret, think, edit, s, intent, marker, unknown
+  kind: string; // fact, ref, evid, rule, cost, quota, call, ret, think, edit, req, rpt, s, intent, marker, unknown
   name?: string;
   kv: Record<string, string>;
   rid?: string;

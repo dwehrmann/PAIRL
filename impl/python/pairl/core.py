@@ -28,7 +28,7 @@ _TRAILING_TAG = re.compile(r"@(m|rid)=([^\s]+)")
 class Record:
     """A single body record (or a columnar row expanded to a record)."""
 
-    kind: str                      # fact, ref, evid, rule, cost, quota, call, ret, think, edit, s, intent, marker
+    kind: str                      # fact, ref, evid, rule, cost, quota, call, ret, think, edit, req, rpt, s, intent, marker
     name: Optional[str] = None     # intent name; record type tag; marker id
     kv: dict[str, str] = field(default_factory=dict)
     rid: Optional[str] = None

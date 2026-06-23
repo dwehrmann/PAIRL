@@ -100,6 +100,10 @@ def _render_record(r: Record) -> str:
         return f"  - Reasoning: {r.kv.get('summary', '')}"
     if r.kind == "edit":
         return f"  - Edit: {r.kv.get('file', '?')} ({r.kv.get('changes', '?')} changes)"
+    if r.kind == "req":
+        return f"  - Request: {r.kv.get('content', '')}"
+    if r.kind == "rpt":
+        return f"  - Report: {r.kv.get('content', '')}"
     if r.kind == "s":
         return None
     return None

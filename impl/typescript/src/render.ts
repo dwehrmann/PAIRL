@@ -66,6 +66,8 @@ function renderRecord(r: PairlRecord): string | null {
     case "ret": return `  - Tool result (${r.kv.status ?? "?"})`;
     case "think": return `  - Reasoning: ${r.kv.summary ?? ""}`;
     case "edit": return `  - Edit: ${r.kv.file ?? "?"} (${r.kv.changes ?? "?"} changes)`;
+    case "req": return `  - Request: ${r.kv.content ?? ""}`;
+    case "rpt": return `  - Report: ${r.kv.content ?? ""}`;
     default: return null;
   }
 }
