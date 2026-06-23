@@ -20,7 +20,7 @@ jobs:
     name: Tag matches package versions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check tag == the three package versions
         run: |
           # On a tag push, require all three packages to match the tag (v1.5.1 -> 1.5.1).
@@ -39,8 +39,8 @@ jobs:
     permissions:
       id-token: write # PyPI Trusted Publishing (OIDC)
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Build sdist + wheel
@@ -59,8 +59,8 @@ jobs:
       contents: read
       id-token: write # npm provenance
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
@@ -81,7 +81,7 @@ jobs:
     needs: versions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - name: Test
         working-directory: impl/rust
