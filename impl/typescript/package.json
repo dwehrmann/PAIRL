@@ -1,6 +1,6 @@
 {
   "name": "pairl",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "PAIRL \u2014 compact, lossless agent-to-agent message protocol. Parse, serialize, validate (V1\u2013V12), canonicalize/hash, and render.",
   "repository": {
     "type": "git",
