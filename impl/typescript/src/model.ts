@@ -17,6 +17,8 @@ export interface PairlRecord {
   fromColumnar?: boolean;
   role?: string;
   parent?: string;
+  /** Positional payload for records with no key=value body, e.g. #s <phase>:<progress>. */
+  arg?: string;
 }
 
 export interface Field {

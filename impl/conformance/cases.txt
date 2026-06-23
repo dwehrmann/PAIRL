@@ -65,6 +65,15 @@ ack{t=x,s=f,l=1} @rid=a2
 
 #req content="add a logout button"
 #rpt content="done — added to header nav"
+@@@CASE state_token|0|1|77b6f2a0c2a37cef305aab980a7494131d9bcced551c2bb66d097583aba0af01|-
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#call tool=Read file="/src/app.ts" @rid=c1
+#ret call=c1 status=ok lines=450 @rid=r1
+#s explore:3/6
+#s ready:edit
 @@@CASE evid_missing_conf|0|0|-|missing
 @v 1
 @id m1

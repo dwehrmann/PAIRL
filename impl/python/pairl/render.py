@@ -105,5 +105,8 @@ def _render_record(r: Record) -> str:
     if r.kind == "rpt":
         return f"  - Report: {r.kv.get('content', '')}"
     if r.kind == "s":
-        return None
+        if not r.arg:
+            return None
+        phase, _, progress = r.arg.partition(":")
+        return f"  - State: {phase} ({progress})" if progress else f"  - State: {phase}"
     return None

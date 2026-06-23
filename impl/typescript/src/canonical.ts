@@ -19,6 +19,8 @@ export function serializeRecord(r: PairlRecord): string {
   if (r.kind === "intent") {
     const params = Object.entries(r.kv).map(([k, v]) => `${k}=${fmtValue(v)}`).join(",");
     head = `${r.name}{${params}}`;
+  } else if (r.kind === "s") {
+    head = r.arg ? `#s ${r.arg}` : "#s";
   } else {
     const pairs = Object.entries(r.kv).map(([k, v]) => `${k}=${fmtValue(v)}`).join(" ");
     head = `#${r.name}${pairs ? " " + pairs : ""}`;

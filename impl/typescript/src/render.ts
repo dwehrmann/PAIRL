@@ -68,6 +68,11 @@ function renderRecord(r: PairlRecord): string | null {
     case "edit": return `  - Edit: ${r.kv.file ?? "?"} (${r.kv.changes ?? "?"} changes)`;
     case "req": return `  - Request: ${r.kv.content ?? ""}`;
     case "rpt": return `  - Report: ${r.kv.content ?? ""}`;
+    case "s": {
+      if (!r.arg) return null;
+      const [phase, progress] = r.arg.split(":");
+      return progress ? `  - State: ${phase} (${progress})` : `  - State: ${phase}`;
+    }
     default: return null;
   }
 }

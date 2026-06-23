@@ -144,7 +144,11 @@ function parseRecord(line: string): PairlRecord {
 
   if (body.startsWith("#")) {
     const hr = HASH_REC.exec(body);
-    if (hr) return { kind: hr[1], name: hr[1], kv: parseKvpairs(hr[2]), rid, m, raw: line };
+    if (hr) {
+      // #s carries a positional <phase>:<progress> payload, not key=value (§7.5)
+      if (hr[1] === "s") return { kind: "s", name: "s", kv: {}, arg: hr[2].trim() || undefined, rid, m, raw: line };
+      return { kind: hr[1], name: hr[1], kv: parseKvpairs(hr[2]), rid, m, raw: line };
+    }
   }
 
   const im = INTENT.exec(body);

@@ -20,6 +20,8 @@ pub struct Record {
     pub from_columnar: bool,
     pub role: Option<String>,
     pub parent: Option<String>,
+    /// Positional payload for records with no key=value body, e.g. #s <phase>:<progress>.
+    pub arg: Option<String>,
 }
 
 impl Record {
@@ -341,6 +343,19 @@ fn parse_record(line: &str) -> Record {
             None => (rest, ""),
         };
         if !tag.is_empty() && tag.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_') {
+            if tag == "s" {
+                // #s carries a positional <phase>:<progress> payload, not key=value (§7.5)
+                let arg = kvstr.trim();
+                return Record {
+                    kind: "s".into(),
+                    name: Some("s".into()),
+                    arg: (!arg.is_empty()).then(|| arg.to_string()),
+                    rid,
+                    m,
+                    raw: line.to_string(),
+                    ..Default::default()
+                };
+            }
             return Record {
                 kind: tag.to_string(),
                 name: Some(tag.to_string()),

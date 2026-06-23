@@ -34,6 +34,8 @@ def serialize_record(r: Record) -> str:
     if r.kind == "intent":
         params = ",".join(f"{k}={_fmt_value(v)}" for k, v in r.kv.items())
         head = f"{r.name}{{{params}}}" if r.kv or True else r.name
+    elif r.kind == "s":
+        head = f"#s {r.arg}" if r.arg else "#s"
     else:
         pairs = " ".join(f"{k}={_fmt_value(v)}" for k, v in r.kv.items())
         head = f"#{r.name} {pairs}".rstrip()

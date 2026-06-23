@@ -38,6 +38,8 @@ class Record:
     # marker-specific
     role: Optional[str] = None
     parent: Optional[str] = None
+    # positional payload for records with no key=value body, e.g. #s <phase>:<progress>
+    arg: Optional[str] = None
 
 
 @dataclass
@@ -234,6 +236,10 @@ def _parse_record(line: str) -> Record:
         mtype = re.match(r"^#([a-z][a-z0-9_]*)\s*(.*)$", body, re.DOTALL)
         if mtype:
             tag, rest = mtype.group(1), mtype.group(2)
+            if tag == "s":
+                # #s carries a positional <phase>:<progress> payload, not key=value (§7.5)
+                return Record(kind="s", name="s", arg=rest.strip() or None,
+                              rid=ridval, m=mval, raw=raw)
             return Record(kind=tag, name=tag, kv=_parse_kvpairs(rest),
                           rid=ridval, m=mval, raw=raw)
 
