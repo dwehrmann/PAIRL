@@ -178,10 +178,10 @@ See [examples/](examples/) for:
 
 ### 3. Implement or Integrate
 
-**Reference implementations** (coming soon):
-* Python parser/renderer
-* TypeScript library
-* Rust validator
+**Reference implementations** ([`impl/`](impl/)) — all v1.5, with a shared [conformance corpus](impl/conformance/):
+* [Python parser/renderer](impl/python/) — parser, validator (V1–V12), canonicalization + SHA-256, NL renderer, CLI
+* [TypeScript library](impl/typescript/) — parse/serialize/validate/canonicalize + hash, encode/decode
+* [Rust validator](impl/rust/) — std-only parser + validator (V1–V12) with CLI
 
 **Integration**: PAIRL works as payload in any system (see §15.3 in SPEC.md)
 
@@ -197,8 +197,7 @@ See [examples/](examples/) for:
 * In-body turn attribution added (v1.3)
 * Session-local short references added (v1.4)
 * Columnar record blocks added (v1.5)
-* Python validator available (tools/validator.py); v1.3 conformance tests in tools/test_turn_markers.py
-* Reference implementations in progress
+* Reference implementations available in [`impl/`](impl/) — Python, TypeScript, and Rust, with a shared cross-implementation [conformance corpus](impl/conformance/)
 * Community feedback welcome
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
