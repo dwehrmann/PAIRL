@@ -1,0 +1,116 @@
+# PAIRL v1.5 cross-implementation conformance corpus.
+#
+# Each case starts with a directive line:
+#   @@@CASE <name>|<strict 0/1>|<valid 0/1>|<hash hex or ->|<expect-substr or ->
+# followed by the PAIRL message body (verbatim, until the next @@@CASE / EOF).
+#
+# All implementations run every case: parse + validate, asserting validity and,
+# for invalid cases, that <expect-substr> appears in some error. Implementations
+# with a canonical hasher (Python, TypeScript) additionally assert the SHA-256.
+# The hash for evid_kv and evid_columnar is IDENTICAL by design (columnar
+# invariance, SPEC §9.4a). Lines starting with '#' before the first @@@CASE are
+# comments.
+@@@CASE basic|0|1|8c86475e240e0bd876bde8f0779a42a1b2686db7eb009780c25db494ab00d68f|-
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+req{t=demo,s=f,l=1} @rid=a1
+#fact deadline=2026-02-05 @rid=f1
+@@@CASE evid_kv|0|1|385505d28f1ebeaef31ecd238f9d6128f9af348012312ef50e6391712aaa790e|-
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#evid claim="LLM costs decreased 60% in 2025" src=s1 conf=0.85
+#evid claim="Multi-agent adoption rose 300%" src=s2 conf=0.90
+@@@CASE evid_columnar|0|1|385505d28f1ebeaef31ecd238f9d6128f9af348012312ef50e6391712aaa790e|-
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#evid[claim,src,conf]
+"LLM costs decreased 60% in 2025" s1 0.85
+"Multi-agent adoption rose 300%" s2 0.90
+@@@CASE quota_columnar|0|1|dc11c5b101831468897470fbafd4200791888a69096aa5d235856d22db68e97d|-
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#quota[type,total,used,rem]
+tokens 50000 38500 11500
+api_calls 25 18 7
+@@@CASE turn_markers|0|1|3ef3d582919aeca29949b82fe87e3f0490089faad67d3b924605195c62662511|-
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#u1
+req{t=x,s=f,l=1} @rid=a1
+#a2
+ack{t=x,s=f,l=1} @rid=a2
+#fact noted=true @m=u1 @rid=f1
+@@@CASE tool_chain|0|1|e20ce89fa022e1a6adcc927a7ddaa828c05ac243aceb0b969e946ef5cfe463a9|-
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#call tool=Read file="/src/app.ts" @rid=c1
+#ret call=c1 status=ok lines=450 @rid=r1
+#think summary="found the handler" @rid=t1
+@@@CASE evid_missing_conf|0|0|-|missing
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#evid[claim,src]
+"x happened" s1
+@@@CASE col_field_mismatch|0|0|-|expected 3
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#evid[claim,src,conf]
+"only two" s1
+@@@CASE col_fact_forbidden|0|0|-|not allowed for #fact
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#fact[key,val]
+deadline 2026-02-05
+@@@CASE dup_rid|0|0|-|V6
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#fact a=1 @rid=f1
+#fact b=2 @rid=f1
+@@@CASE budget_overrun|0|0|-|V8
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+@budget 0.10USD
+
+#cost val=0.42 cur=USD
+@@@CASE dangling_m|0|0|-|V11
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#u1
+req{t=x} @rid=a1
+#fact k=v @m=a9 @rid=f1
+@@@CASE bad_ref|0|0|-|V3
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#ref doc=ref:onlytwo
+@@@CASE ret_bad_status|0|0|-|V9
+@v 1
+@id m1
+@ts 2026-06-22T10:00:00.000+02:00
+
+#call tool=Bash cmd="ls" @rid=c1
+#ret call=c1 status=maybe @rid=r1

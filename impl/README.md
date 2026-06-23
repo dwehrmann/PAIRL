@@ -8,9 +8,13 @@ enforce the same validation rules (V1–V12). They agree on all files in
 
 | Dir | Language | Scope | Tests |
 |-----|----------|-------|-------|
-| [`python/`](python) | Python ≥3.10 (stdlib) | parser · validator · canonicalize+SHA-256 · NL renderer · CLI | `python -m unittest` (15) |
-| [`typescript/`](typescript) | TypeScript / Node ≥18 (ESM) | parse · serialize · validate · canonicalize+SHA-256 · render · encode/decode | `vitest` (14) |
-| [`rust/`](rust) | Rust 2021 (stdlib only) | parser · validator (V1–V12) · CLI | `cargo test` (11) |
+| [`python/`](python) | Python ≥3.10 (stdlib) | parser · validator · canonicalize+SHA-256 · NL renderer · CLI | `python -m unittest` (29) |
+| [`typescript/`](typescript) | TypeScript / Node ≥18 (ESM) | parse · serialize · validate · canonicalize+SHA-256 · render · encode/decode | `vitest` (29) |
+| [`rust/`](rust) | Rust 2021 (stdlib only) | parser · validator (V1–V12) · CLI | `cargo test` (12) |
+
+Each test count includes the shared [`conformance/`](conformance) corpus that all
+three run (14 vectors), so the implementations are verified to agree on validity,
+error reporting, and — for Python/TypeScript — the canonical SHA-256 hashes.
 
 ## Shared guarantees
 
