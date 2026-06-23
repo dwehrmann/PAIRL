@@ -1,0 +1,61 @@
+name: CI
+
+# Runs the three reference test suites (Python, TypeScript, Rust) on every push
+# and pull request. Each suite includes the shared cross-implementation
+# conformance corpus (impl/conformance/cases.txt), so a divergence in any one
+# implementation fails the build before it can be tagged and published.
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  versions:
+    name: Package versions agree
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the three package versions agree
+        run: scripts/check_versions.sh
+
+  python:
+    name: Python tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run test suite + conformance corpus
+        working-directory: impl/python
+        run: python -m unittest discover -s tests -v
+
+  typescript:
+    name: TypeScript tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install + build + test
+        working-directory: impl/typescript
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+  rust:
+    name: Rust tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test
+        working-directory: impl/rust
+        run: cargo test

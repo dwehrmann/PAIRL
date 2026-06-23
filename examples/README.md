@@ -166,8 +166,8 @@ Copy and modify these examples for your own use cases:
 All examples should pass:
 
 ```bash
-# Using reference validator
-python ../tools/validator.py 01-basic-request.pairl
+# Using the reference implementation (pip install pairl, or run from impl/python)
+python -m pairl validate 01-basic-request.pairl
 
 # Expected output:
 # ✓ Headers valid

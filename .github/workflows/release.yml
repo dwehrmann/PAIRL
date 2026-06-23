@@ -16,8 +16,24 @@ on:
   workflow_dispatch:
 
 jobs:
+  versions:
+    name: Tag matches package versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check tag == the three package versions
+        run: |
+          # On a tag push, require all three packages to match the tag (v1.5.1 -> 1.5.1).
+          # On manual dispatch (no tag) just require the three to agree.
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            scripts/check_versions.sh "${GITHUB_REF_NAME#v}"
+          else
+            scripts/check_versions.sh
+          fi
+
   python:
     name: Publish Python → PyPI
+    needs: versions
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -37,6 +53,7 @@ jobs:
 
   npm:
     name: Publish TypeScript → npm
+    needs: versions
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -61,6 +78,7 @@ jobs:
 
   crates:
     name: Publish Rust → crates.io
+    needs: versions
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
