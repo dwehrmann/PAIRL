@@ -1,0 +1,16 @@
+[package]
+name = "pairl-validator"
+version = "1.5.0"
+edition = "2021"
+description = "PAIRL v1.5 parser and validator (rules V1–V12)"
+license = "MIT"
+
+[lib]
+name = "pairl_validator"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pairl-validate"
+path = "src/main.rs"
+
+# No external dependencies — std only, so it builds and tests offline.
