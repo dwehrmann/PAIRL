@@ -2,6 +2,11 @@
 
 **Version 1.5** | [Specification](SPEC.md) | [Examples](examples/) | [Contributing](CONTRIBUTING.md) | [Website](https://pairl.dev)
 
+[![PyPI](https://img.shields.io/pypi/v/pairl.svg)](https://pypi.org/project/pairl/)
+[![npm](https://img.shields.io/npm/v/pairl.svg)](https://www.npmjs.com/package/pairl)
+[![crates.io](https://img.shields.io/crates/v/pairl.svg)](https://crates.io/crates/pairl)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 > **PAIRL is an officially recognized R&D project**, certified by the German Federal Ministry of Finance (BSFZ) as eligible for research and development funding under the Forschungszulagengesetz (FZulG) — effective May 2026.
 
 ---
@@ -176,14 +181,48 @@ See [examples/](examples/) for:
 * Tool-use sessions
 * Turn attribution — a conversation compressed into one body with `#u1`/`#a2` markers ([07](examples/07-turn-attribution.pairl) · [rendered](examples/07-turn-attribution.rendered.md))
 
-### 3. Implement or Integrate
+### 3. Install a Reference Library
 
-**Reference implementations** ([`impl/`](impl/)) — all v1.5, with a shared [conformance corpus](impl/conformance/):
-* [Python parser/renderer](impl/python/) — parser, validator (V1–V12), canonicalization + SHA-256, NL renderer, CLI
-* [TypeScript library](impl/typescript/) — parse/serialize/validate/canonicalize + hash, encode/decode
-* [Rust validator](impl/rust/) — std-only parser + validator (V1–V12) with CLI
+All three reference implementations are published as **`pairl`**:
 
-**Integration**: PAIRL works as payload in any system (see §15.3 in SPEC.md)
+```bash
+pip install pairl        # Python
+npm install pairl        # TypeScript
+cargo add pairl          # Rust
+```
+
+Parse, validate, and hash a message — Python:
+
+```python
+import pairl
+
+msg = pairl.parse(open("message.pairl").read())
+res = pairl.validate(msg)            # rules V1–V12
+print(pairl.compute_hash(msg))       # canonical SHA-256
+print(pairl.render(msg))             # human-readable rendering
+```
+
+TypeScript:
+
+```ts
+import { parse, validate, computeHash, render } from "pairl";
+
+const msg = parse(pairlText);
+const res = validate(msg);           // rules V1–V12
+console.log(computeHash(msg), render(msg));
+```
+
+Each package README covers the full API and CLI:
+
+* [Python](impl/python/) ([PyPI](https://pypi.org/project/pairl/)) — parser, validator (V1–V12), canonicalization + SHA-256, NL renderer, CLI
+* [TypeScript](impl/typescript/) ([npm](https://www.npmjs.com/package/pairl)) — parse/serialize/validate/canonicalize + hash, encode/decode
+* [Rust](impl/rust/) ([crates.io](https://crates.io/crates/pairl)) — std-only parser + validator (V1–V12) with CLI
+
+All three are kept in lockstep against a shared [conformance corpus](impl/conformance/).
+
+### 4. Integrate
+
+PAIRL works as payload in any system — HTTP, files, message queues, WebSocket (see §15.3 in SPEC.md).
 
 ---
 
@@ -197,7 +236,7 @@ See [examples/](examples/) for:
 * In-body turn attribution added (v1.3)
 * Session-local short references added (v1.4)
 * Columnar record blocks added (v1.5)
-* Reference implementations available in [`impl/`](impl/) — Python, TypeScript, and Rust, with a shared cross-implementation [conformance corpus](impl/conformance/)
+* Reference implementations **published as `pairl`** on [PyPI](https://pypi.org/project/pairl/), [npm](https://www.npmjs.com/package/pairl), and [crates.io](https://crates.io/crates/pairl) — Python, TypeScript, and Rust ([`impl/`](impl/)), released in lockstep against a shared cross-implementation [conformance corpus](impl/conformance/)
 * Community feedback welcome
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
@@ -234,6 +273,7 @@ See [LICENSE](LICENSE) for full details.
 * [Examples](examples/)
 * [Contributing](CONTRIBUTING.md)
 * [Changelog](CHANGELOG.md)
+* Packages: [PyPI](https://pypi.org/project/pairl/) · [npm](https://www.npmjs.com/package/pairl) · [crates.io](https://crates.io/crates/pairl)
 
 ---
 
