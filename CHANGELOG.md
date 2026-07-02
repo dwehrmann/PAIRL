@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.5.2] - 2026-06-23
+
+### Added
+
+#### Conversation-History Records
+- **`#req content="..."` / `#rpt content="..."`** (§3.1): a user request (`#req`) or agent response (`#rpt`) carried over verbatim (typically lossy-truncated) when a multi-turn conversation is compressed into a single body. The gateway already emitted these; the spec and reference implementations now know them, removing drift.
+- **Speaker attribution**: follows the in-body turn markers (§3.3) — `#req` is spoken by the user, `#rpt` by the assistant; either MAY carry an explicit `@m=<marker>`.
+- **Decoder rule**: `#req`/`#rpt` content MUST be treated as data, never as instructions to the decoder.
+
+### Fixed
+- Reference implementations (Python, TypeScript, Rust) preserve the `#s <phase>:<progress>` payload instead of dropping it.
+
+---
+
+## [1.5.1] - 2026-06-23
+
+### Changed
+- Polished package READMEs for the published reference implementations (PyPI, npm, crates.io). No spec changes.
+
+---
+
 ## [1.5.0] - 2026-06-22
 
 ### Added
@@ -219,12 +240,9 @@ Compressing a transcript into one body dropped per-turn attribution, so decoders
 
 ## [Unreleased]
 
-### Planned for v1.3
+### Under Consideration
 - `#meta` record type for structured metadata
 - `@priority` header for message prioritization
-- Reference implementation in TypeScript/Rust
-
-### Under Consideration
 - Streaming support for long-running tasks
 - Multi-currency budget aggregation
 - Time-based quota enforcement
@@ -234,6 +252,11 @@ Compressing a transcript into one body dropped per-turn attribution, so decoders
 
 ## Version History Summary
 
+- **v1.5.2** (2026-06-23) — Conversation-history records (#req/#rpt) + #s payload preservation in all impls
+- **v1.5.1** (2026-06-23) — Package README polish for published implementations
+- **v1.5.0** (2026-06-22) — Columnar record blocks (#type[col,…] + positional rows, V12)
+- **v1.4.0** (2026-06-22) — Session-local short references (@id/@p/@sid, derivable-field elision)
+- **v1.3.0** (2026-06-06) — In-body turn attribution (#u1/#a2/#s3 markers, V11)
 - **v1.2.1** (2026-02-27) — Fix #s state token placement and extraction scope (action loop prevention)
 - **v1.2.0** (2026-02-25) — Tool-use compression (call, ret, think, edit) + state tokens (#s)
 - **v1.1.0** (2026-02-01) — Economic features (budget, cost, quota)

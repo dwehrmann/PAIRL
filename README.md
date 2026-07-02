@@ -14,7 +14,7 @@ Instead of verbose natural language between AI agents, PAIRL uses:
 
 * **Two channels**: lossy intents (style/mood) + lossless facts (names, numbers, evidence)
 * **Pointer-first state**: references instead of copying large content
-* **Token efficiency**: 70-90% reduction vs natural language
+* **Token efficiency**: ~47% net reduction on short exchanges, rising to ~67% on long, prose-heavy conversations (see curve below)
 * **Columnar record blocks** (v1.5): repeated same-type records declare their key schema once (`#evid[claim,src,conf]` + positional rows) instead of repeating `key=` per line — ~40% fewer tokens on schema-heavy messages, lossless and back-compatible
 * **Short references** (v1.4): session-local `@id m2`/`@p m1` ids and `@m1#a1` record refs separate identity from integrity, cutting threading overhead while full content-hashes stay available when needed
 * **Turn attribution** (v1.3): compact `#u1`/`#a2` markers preserve *who said what* when a whole conversation is compressed into one body — assigned deterministically, so the speaker never drifts

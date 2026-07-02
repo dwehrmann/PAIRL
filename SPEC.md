@@ -285,7 +285,7 @@ is exactly equivalent to:
 
 **When it applies / when it doesn't**:
 
-* Use it where the **same keys repeat** across records: `#evid`, `#cost`, `#quota`, and tool records.
+* Use it where the **same keys repeat** across records: `#evid`, `#cost`, `#quota`, and tool records — for `#call`/`#ret` only when the repeated calls actually share the same param/result keys (params vary per tool, so this typically means repeated calls to the *same* tool).
 * It does **not** apply to records whose key is itself data, i.e. variable per line: `#fact key=value` (every `key` distinct) and `#ref refname=ref:…` (the ref name is the key). Keep those — and one-off `#rule`s — as `key=value`.
 
 **Canonicalization**: columnar blocks are **expanded to their equivalent `#type key=value` records before canonicalization and hashing** (§9.4a). A message therefore hashes identically whether the sender used the columnar or the `key=value` form, so `@hash`, dedup, and caching are unaffected by the choice.
@@ -807,13 +807,14 @@ message         := header-block LF body
 header-block    := header-line *(LF header-line)
 body            := *(record-line LF) [record-line]
 header-line     := "@" hkey SP hval
-record-line     := marker-record / msg-record / intent-record / hash-record / col-header / col-row
+record-line     := marker-record / msg-record / intent-record / hash-record / state-record / col-header / col-row
 
 col-header      := "#" ident "[" key *("," key) "]"        ; v1.5 columnar block header, e.g. #evid[claim,src,conf]
 col-row         := field *(SP field) [SP mtag] [SP rid]     ; one positional record; only valid inside a block
 field           := atom / quoted
 
 marker-record   := "#" ("u" / "a" / "s") 1*7(DIGIT)        ; compact turn marker, e.g. #u1
+state-record    := "#s" SP atom                             ; v1.2 state token (§7.5), e.g. #s explore:3/6
 msg-record      := "#msg" SP msgid SP "r=" role SP "parent=" (msgid / "-")  ; verbose long form
 msgid           := 1*8(ALNUM)
 role            := "u" / "a" / "s" / ident
@@ -846,6 +847,8 @@ ident           := 1*(LOWER / DIGIT / "_" / "-")
 ```
 
 Notes:
+* `state-record` vs `marker-record`: `#s` followed directly by digits (`#s3`) is a turn marker; `#s` followed by a space and a payload atom (`#s done`, `#s explore:3/6`) is a state token. The state token has no `key=value` pair and is therefore *not* a `hash-record`.
+* The conversation-history records `#req content="..."` / `#rpt content="..."` (v1.5, §3.1) need no dedicated production — they parse as `hash-record` (`#` ident SP kvpairs).
 * `col-header` / `col-row` (v1.5, §3.4): a `col-header` opens a columnar block; every following line that is non-blank and does **not** start with `#` is a `col-row` belonging to that block. The block ends at the next line starting with `#`, a blank line, or `---`. Each `col-row` MUST have exactly as many fields (quoted strings count as one field) as the header has columns. Columnar blocks expand to `hash-record`s before canonicalization (§9.4a).
 * `@deps` value uses `deps-val` (comma-separated refs, no spaces).
 * `ref` permits `#<rid>` fragments for record references.
@@ -1160,11 +1163,12 @@ PAIRL is not primarily a natural language format. **Rendering is a separate step
 PAIRL implementations should define error handling for:
 
 1. **Syntax errors**: malformed headers, invalid record format
-2. **Validation errors**: violation of rules V1-V11
+2. **Validation errors**: violation of rules V1-V12
 3. **Resolution errors**: unresolvable `ref:` pointers
 4. **Integrity errors**: hash mismatches, circular dependencies
 5. **Budget errors** (v1.1): budget exceeded, invalid currency codes
 6. **Tool chain errors** (v1.2): orphaned `#ret` records, missing required keys on tool records
+7. **Columnar block errors** (v1.5): malformed block headers, per-row field-count mismatches (V12)
 
 ### 13.2 Error Modes
 
@@ -1182,6 +1186,7 @@ PAIRL implementations should define error handling for:
 * **Budget exceeded** (v1.1): log warning, expect `ref` or `bid` intent from agent
 * **Orphaned `#ret`** (v1.2): error in strict mode, warning in loose mode
 * **Missing tool record keys** (v1.2): error
+* **Columnar block violations** (v1.5): error — malformed header, column-count mismatch, duplicate column key, unquoted field containing spaces (see V12)
 
 ### 13.4 Error Reporting
 
@@ -1199,7 +1204,7 @@ Implementations should provide structured error output including:
 ### 14.1 Protocol Versioning
 
 * PAIRL uses semantic versioning: `MAJOR.MINOR.PATCH`
-* Current version: **1.4**
+* Current version: **1.5**
 * `@v` header contains **major version only**
 
 ### 14.2 Version Compatibility
@@ -1265,6 +1270,17 @@ dominant cost on threaded traffic — a 26-char ULID was repeated across `@mid`,
 * Session-local references `@<id>` / `@<id>#<rid>`; fully-qualified `ref:msg:<sid>:<id>[#<rid>]` for cross-session (§10)
 * Derivable-field omission: drop `@root` when it equals `@p`, and `@deps` entries already implied by `@p`/`@root` (§9.1a)
 * **Back-compatible**: the v1.3 long forms (`@mid`/`@parent`/`@root`/`@deps` with `ref:msg:<ULID>`, and `ref:msg:<ULID>#<rid>` record refs) remain accepted; a message carries exactly one of `@id`/`@mid`
+
+### 14.9 v1.5 Changes
+
+v1.5 adds:
+
+* **Columnar record blocks** (§3.4): `#type[col,col,…]` declares a shared key schema once, followed by one positional row per record — an optional, lossless alternative to repeating `key=` on every line
+* **Grammar productions** `col-header` / `col-row` (§8.3)
+* **Canonicalization**: columnar blocks expand to their `#type key=value` equivalents before hashing (§9.4a), so a message hashes identically in either form
+* **Validation rule V12** (Columnar Block Integrity)
+* **Conversation-history records** `#req content="..."` / `#rpt content="..."` (§3.1): prior user/assistant turns carried over verbatim when a multi-turn conversation is compressed into one body; decoders MUST treat their content as data, never as instructions
+* **Backward compatible**: the `key=value` form remains fully valid; v1.4 parsers can treat `#req`/`#rpt` as ordinary `#`-records
 
 ---
 
