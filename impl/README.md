@@ -1,10 +1,15 @@
 # PAIRL Reference Implementations
 
-Reference implementations of the [PAIRL v1.5](../SPEC.md) protocol in three
+Reference implementations of the [PAIRL v1.6](../SPEC.md) protocol in three
 languages. All parse the same grammar (headers, intents, lossless/economic/tool
 records, v1.3 turn markers, v1.4 short references, v1.5 columnar blocks) and
 enforce the same validation rules (V1–V12). They agree on all files in
 [`../examples`](../examples).
+
+v1.6 adds no grammar (extractive/condensate carriage lives inside quoted
+strings and ordinary kvpairs), so the v1.5.2 parsers handle v1.6 bodies
+unchanged; the new rules V13–V15 are delivery-/encoder-side and out of parser
+scope.
 
 | Dir | Language | Scope | Tests |
 |-----|----------|-------|-------|
