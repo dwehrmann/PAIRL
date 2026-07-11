@@ -10,7 +10,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
-SPEC_VERSION = "1.5"
+SPEC_VERSION = "1.6"
 
 # Record types whose key schema is fixed (columnar-eligible). #fact/#ref have a
 # variable key (the key is data) and are not columnar.

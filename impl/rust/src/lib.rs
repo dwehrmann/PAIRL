@@ -4,7 +4,7 @@
 //! turn markers, v1.4 short references, and v1.5 columnar record blocks — and
 //! checks the conformance rules.
 
-pub const SPEC_VERSION: &str = "1.5";
+pub const SPEC_VERSION: &str = "1.6";
 
 const COLUMNAR_FORBIDDEN: [&str; 2] = ["fact", "ref"];
 

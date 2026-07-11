@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Compatibility
 - No new grammar: `mode=cond` is an ordinary kvpair and the elision marker lives inside a quoted string — v1.5 parsers parse v1.6 bodies unchanged; reference implementations need no parser changes. V13–V15 are delivery-/encoder-side rules.
 
+### Reference Implementations
+- Python/TypeScript/Rust released as **1.6.0 in lockstep** (no parser changes — demonstrating the no-new-grammar property); `SPEC_VERSION` bumped to `1.6`; two v1.6 cases (extractive quote with elision marker, `mode=cond` condensate) added to the shared conformance corpus.
+
 ---
 
 ## [1.5.2] - 2026-06-23

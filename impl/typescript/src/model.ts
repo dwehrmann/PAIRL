@@ -1,6 +1,6 @@
 /** PAIRL v1.5 data model. */
 
-export const SPEC_VERSION = "1.5";
+export const SPEC_VERSION = "1.6";
 
 /** Record types with a fixed key schema (columnar-eligible). */
 export const FIXED_SCHEMA_TYPES = new Set(["evid", "rule", "cost", "quota", "call", "ret", "think", "edit"]);

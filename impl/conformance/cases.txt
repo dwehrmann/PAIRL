@@ -130,3 +130,22 @@ req{t=x} @rid=a1
 
 #call tool=Bash cmd="ls" @rid=c1
 #ret call=c1 status=maybe @rid=r1
+@@@CASE v16_extractive_quote|1|1|-|-
+@v 1
+@id m1
+@ts 2026-07-11T09:00:00.000+02:00
+
+#u1
+#req content="API latency spiked to 800ms P99 after the Redis upgrade. [...] connection pool exhaustion starting at 14:32 UTC." @rid=q1
+#fact issue_start="14:32 UTC" @rid=f1
+#a2
+#rpt content="Redis 7.2 lowered the default from 10000 to 4096." @rid=q2
+@@@CASE v16_marked_condensate|1|1|-|-
+@v 1
+@id m1
+@ts 2026-07-11T09:00:00.000+02:00
+
+#u1
+#req content="Opens a database migration and flags extension compatibility as a concern." mode=cond @rid=q1
+#fact current_version="PG 12" @rid=f1
+#fact target_version="PG 16" @rid=f2

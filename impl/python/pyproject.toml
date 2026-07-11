@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pairl"
-version = "1.5.2"
+version = "1.6.0"
 description = "PAIRL — compact, lossless agent-to-agent message protocol. Python parser, validator (V1–V12), canonicalizer/hasher, and renderer."
 readme = "README.md"
 requires-python = ">=3.10"

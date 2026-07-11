@@ -10,6 +10,16 @@ communication. This package parses PAIRL, validates it (rules V1–V12),
 canonicalizes and SHA-256–hashes it, and renders it back to human-readable
 text. Pure standard library, no runtime dependencies.
 
+
+## PAIRL v1.6
+
+This release tracks spec v1.6 in lockstep. v1.6 adds **no new grammar** — the
+extractive-quote and marked-condensate carriage forms for `#req`/`#rpt` live
+inside ordinary quoted strings and kvpairs, so this parser handles v1.6 bodies
+unchanged (two v1.6 cases are part of the conformance corpus). The new rules
+V13–V15 are delivery-/encoder-side and out of message-parser scope by design
+(SPEC §12a, §3.1/V15).
+
 ## Why PAIRL?
 
 Agents exchanging context in natural language burn tokens and let facts drift;

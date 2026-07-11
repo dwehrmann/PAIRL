@@ -1,6 +1,6 @@
 [package]
 name = "pairl"
-version = "1.5.2"
+version = "1.6.0"
 edition = "2021"
 description = "PAIRL — compact, lossless agent-to-agent message protocol. Parser and validator (rules V1–V12)."
 license = "Apache-2.0"
