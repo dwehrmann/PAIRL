@@ -1,6 +1,6 @@
 # PAIRL — Protocol for Agent Intermediate Representation (Lite)
 
-**Version 1.5** | [Specification](SPEC.md) | [Examples](examples/) | [Contributing](CONTRIBUTING.md) | [Website](https://pairl.dev)
+**Version 1.6** | [Specification](SPEC.md) | [Examples](examples/) | [Contributing](CONTRIBUTING.md) | [Website](https://pairl.dev)
 
 [![PyPI](https://img.shields.io/pypi/v/pairl.svg)](https://pypi.org/project/pairl/)
 [![npm](https://img.shields.io/npm/v/pairl.svg)](https://www.npmjs.com/package/pairl)
@@ -17,7 +17,8 @@ PAIRL is a compact, human-readable, machine-parseable message format for **agent
 
 Instead of verbose natural language between AI agents, PAIRL uses:
 
-* **Two channels**: lossy intents (style/mood) + lossless facts (names, numbers, evidence)
+* **Two channels**: per-turn quotation or marked condensate (`#req`/`#rpt`) + lossless facts (names, numbers, evidence)
+* **Extractive quotation** (v1.6): the lossy channel carries byte-exact source fragments (` [...] ` marks omissions) — an encoder LLM only chooses where to cut, a deterministic verifier re-copies every fragment from the source, so content hallucination is structurally impossible; LLM paraphrase must be explicitly marked (`mode=cond`)
 * **Pointer-first state**: references instead of copying large content
 * **Token efficiency**: ~47% net reduction on short exchanges, rising to ~67% on long, prose-heavy conversations (see curve below)
 * **Columnar record blocks** (v1.5): repeated same-type records declare their key schema once (`#evid[claim,src,conf]` + positional rows) instead of repeating `key=` per line — ~40% fewer tokens on schema-heavy messages, lossless and back-compatible
@@ -87,7 +88,7 @@ Agent A --> [PAIRL message] --> Agent B
 
 ### 1. Two Channels
 
-* **Lossy channel**: intents like `req{t=specs,s=f,l=2}` (style, mood, audience)
+* **Lossy channel**: what each turn said — `#req`/`#rpt` records carrying quoted source text (v1.6 default; ` [...] ` marks omissions) or an explicitly marked condensate (`mode=cond`). Intents like `req{t=specs,s=f,l=2}` remain as optional stance signals.
 * **Lossless channel**: `#fact`, `#ref`, `#evid` (facts, pointers, evidence)
 
 **Rule**: Anything that must be correct later (names, numbers, dates, URLs) goes in the lossless channel.
@@ -169,7 +170,7 @@ Commercial use is permitted under Apache 2.0 (see [LICENSE](LICENSE)).
 
 ### 1. Read the Spec
 
-Start with [SPEC.md](SPEC.md) for the complete v1.5 specification.
+Start with [SPEC.md](SPEC.md) for the complete v1.6 specification.
 
 ### 2. Explore Examples
 
@@ -228,7 +229,7 @@ PAIRL works as payload in any system — HTTP, files, message queues, WebSocket 
 
 ## Project Status
 
-**Current version**: 1.5 (June 2026)
+**Current version**: 1.6 (July 2026)
 
 * Core spec stabilized (v1.0)
 * Economic features added (v1.1)
@@ -236,6 +237,7 @@ PAIRL works as payload in any system — HTTP, files, message queues, WebSocket 
 * In-body turn attribution added (v1.3)
 * Session-local short references added (v1.4)
 * Columnar record blocks added (v1.5)
+* Extractive/condensate carriage forms, per-body legend, session maintenance profile added (v1.6)
 * Reference implementations **published as `pairl`** on [PyPI](https://pypi.org/project/pairl/), [npm](https://www.npmjs.com/package/pairl), and [crates.io](https://crates.io/crates/pairl) — Python, TypeScript, and Rust ([`impl/`](impl/)), released in lockstep against a shared cross-implementation [conformance corpus](impl/conformance/)
 * Community feedback welcome
 

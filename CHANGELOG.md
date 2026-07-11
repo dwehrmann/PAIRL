@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.6.0] - 2026-07-11
+
+### Added
+
+#### Carriage Forms for `#req`/`#rpt` (§3.1)
+- **Extractive form**: content may consist of byte-exact source fragments joined by the elision marker ` [...] ` — the encoder chooses where to cut, never authors words; fragments in source order, no overlap. When an LLM proposes spans, the encoder MUST verify and re-copy each fragment from the source before emitting (see V15).
+- **Condensate form** (`mode=cond`): encoder-authored paraphrase, permitted only when explicitly marked. Condensed content is regenerable; every citable value it carries MUST also appear in a lossless record under the same turn. An unmarked `#req`/`#rpt` is always a quotation.
+
+#### Lossy-Carrier Role Change (§0.1, §4)
+- `#req`/`#rpt` become the **primary lossy channel**; intents are demoted to optional stance signals. Measured basis: intent-coded carriage lost coverage to free prose in all three pre-registered benchmark regimes (STAGE-4/5), while extractive quotation reached prose-summary coverage parity at 60% reduction with a construction-level zero-content-hallucination guarantee (STAGE-7 confirmatory, n=79×R=3 + regime guard).
+
+#### Per-Body Legend (§12a)
+- Normative compressed-delivery contract: construct scan, required legend content ending in **prohibitive fidelity rules**, full-spec fallback on any unexplained construct, and frozen-baseline + post-body-addendum discipline for maintained sessions.
+
+#### Session Maintenance Profile (§12b)
+- Append-only maintained bodies: byte-stable prefix, frozen legend, session-scoped RID uniqueness, cache-aligned delivery guidance.
+
+#### Validation Rules
+- **V13** Legend Completeness, **V14** Legend Fidelity Rules, **V15** Quotation Integrity (encoder-side).
+
+### Compatibility
+- No new grammar: `mode=cond` is an ordinary kvpair and the elision marker lives inside a quoted string — v1.5 parsers parse v1.6 bodies unchanged; reference implementations need no parser changes. V13–V15 are delivery-/encoder-side rules.
+
+---
+
 ## [1.5.2] - 2026-06-23
 
 ### Added
