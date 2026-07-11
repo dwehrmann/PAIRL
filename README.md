@@ -53,6 +53,17 @@ req{t=specs,s=f,l=2,m=+,a=c} @rid=a1
 * **Lossless facts**: deadline is 2026-02-05, format is pdf or link, asking for spec_document
 * **Reference**: points to document by content hash instead of copying it
 
+And when a whole conversation is compressed into one body (the v1.6 primary carrier — extractive quotes):
+
+```
+#u1
+#req content="API latency spiked to 800ms P99 after the Redis upgrade. [...] connection pool exhaustion starting at 14:32 UTC." @rid=q1
+#a2
+#rpt content="Redis 7.2 lowered the default from 10000 to 4096. [...] stuck in CLOSE_WAIT you could hit the limit." @rid=q2
+```
+
+Every character inside `content="…"` is copied verbatim from the original turn — ` [...] ` marks omitted text, and an encoder-authored summary is only legal when explicitly marked `mode=cond` (see [SPEC §3.1](SPEC.md)).
+
 See [examples/](examples/) for complete threaded conversations.
 
 ---

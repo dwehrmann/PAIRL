@@ -1,0 +1,20 @@
+@v 1
+@id m6
+@ts 2026-07-11T09:00:00.000+02:00
+
+#u1
+#req content="Our API latency spiked to 800ms P99 after the Redis upgrade. Before it was 120ms. [...] connection pool exhaustion starting at 14:32 UTC." @rid=q1
+#fact p99_latency_after=800ms @rid=f1
+#fact p99_latency_before=120ms @rid=f2
+#fact issue_start="14:32 UTC" @rid=f3
+#a2
+#rpt content="Check maxclients in redis.conf — Redis 7.2 lowered the default from 10000 to 4096. Your pool size of 200 connections per pod across 12 pods = 2400, which fits, but if some connections are stuck in CLOSE_WAIT you could hit the limit." @rid=q2
+wrn{t=connection_limit} @rid=a1
+#fact redis_maxclients_default_7_2=4096 @rid=f4
+#u3
+#req content="maxclients was at 4096 and we had 3800 active connections. Bumped it to 8192 and latency is back to 115ms." @rid=q3
+fin{t=fix_confirmed} @rid=a2
+#fact active_connections=3800 @rid=f5
+#fact fix="maxclients bumped to 8192, latency back to 115ms" @rid=f6
+#a4
+#rpt content="Closes the incident and recommends alerting when connected_clients exceeds 80% of maxclients, so the next approach to the limit is visible early." mode=cond @rid=q4

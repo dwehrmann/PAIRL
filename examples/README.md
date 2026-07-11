@@ -53,6 +53,11 @@ Each example includes:
    - `#evid[claim,src,conf]` / `#quota[type,total,used,rem]` declare the schema once + positional rows
    - Combined with v1.4 short refs (`s1`…`s5`); ~40% fewer tokens, lossless
 
+9. **[09-extractive-quotes.pairl](09-extractive-quotes.pairl)** | [Rendered](09-extractive-quotes.rendered.md)
+   - A multi-turn conversation compressed with the **v1.6 carriage forms** (§3.1)
+   - Unmarked `#req`/`#rpt` = verbatim quotes of the original turns (` [...] ` marks omissions)
+   - One turn as explicitly **marked condensate** (`mode=cond`) — the only place paraphrase is allowed
+
 ---
 
 ## Understanding PAIRL Rendering
@@ -185,6 +190,7 @@ python -m pairl validate 01-basic-request.pairl
 - Example `06` uses **v1.2 features** (#call, #ret, #think, #edit)
 - Example `07` uses **v1.3 features** (in-body turn markers)
 - Example `08` uses **v1.5 features** (columnar record blocks) + v1.4 short refs
+- Example `09` uses **v1.6 features** (extractive-quote and marked-condensate carriage for `#req`/`#rpt`)
 - v1.0 parsers can read all examples (may ignore v1.1/v1.2 fields)
 
 ---
