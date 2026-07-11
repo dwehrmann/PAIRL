@@ -175,6 +175,21 @@ pln{t=rollout} @rid=a2
 
 Commercial use is permitted under Apache 2.0 (see [LICENSE](LICENSE)).
 
+### An open protocol, deliberately
+
+The **entire method is open and stays open** — the format, the grammar, the
+validation rules (V1–V15), the extractive-quote construction and its verifier,
+the per-body legend contract, and the session maintenance profile. No patent is
+claimed over any of it. Everything you need to build a conforming, competitive
+implementation is in this repository, and that is the point: a standard held in
+secret is not a standard.
+
+We build a commercial gateway on top of PAIRL. What is proprietary there is the
+*operation*, never the mechanism: a tuned production encoder variant, the
+profitability gating that decides when compressing is worth it at all, and the
+traffic calibration that only real usage yields. If you implement PAIRL yourself,
+you are not fighting us for the spec — you have all of it.
+
 ---
 
 ## Getting Started
