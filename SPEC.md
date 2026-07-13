@@ -249,9 +249,9 @@ When a multi-turn conversation is compressed into a **single body**, message-lev
 
 **Deterministic assignment (no LLM attribution)**: a turn's speaker and order are structural — known to whatever assembled the conversation. The encoder/gateway therefore SHOULD emit these markers itself rather than ask a language model to label speakers. This removes *attribution drift* (records assigned to the wrong speaker) by construction, while the intent channel stays lossy.
 
-**Verbose long form** (also valid; typically an encoder intermediate that a gateway rewrites into the compact form): `#msg <id> r=<role> parent=<prev-id|->`, where `<id>` is a body-scoped turn id, `r=` the role (and MAY name a participant id for multi-party, e.g. `r=staff_eng`), and `parent=` the preceding turn id (`-` for the first). Records bind to it by the same grouping rule, with `@m=<id>` as the override.
+**Verbose long form — the normative multi-party carrier**: `#msg <id> r=<speaker> parent=<prev-id|->`, where `<id>` is a body-scoped turn id, `r=` the speaker (a `u`/`a`/`s` role letter, **or a named participant id** for multi-party, e.g. `r=staff_eng`), and `parent=` the preceding turn id (`-` for the first). Records bind to it by the same grouping rule, with `@m=<id>` as the override. For two-party (+system) conversations a gateway MAY rewrite it into the compact `#<role><n>` form; for conversations with more than two non-system speakers it MUST NOT — the compact letters cannot name a third speaker.
 
-**Multi-party**: the compact `u`/`a`/`s` letters cover the common two-party + system case. For more participants, use the verbose `#msg` form with a named `r=` participant id.
+**Multi-party (normative)**: the compact `u`/`a`/`s` letters cover only the two-party + system case. A conversation with **more than two non-system participants SHOULD** be carried in the verbose `#msg` form with a distinct named `r=` participant id per speaker; an encoder that collapses named speakers onto the compact role letters keeps the quotation but discards the speaker binding. This is a measured requirement, not a stylistic one: on multi-party interview transcripts, named `#msg` markers scored **+36.6 pp** attribution coverage over free-prose summarization and **+16.4 pp** over the *same* extractive quotes carried under compact `u`/`a` markers — the win is in the named marker, not the quoting — while free-prose summarization collapsed to 2.95 misattributions per answer (STAGE-6A confirmatory, n=100 × R=3; see the benchmark repo). Attribution remains structural: the participant id is assigned by whatever assembled the conversation, never inferred by a language model.
 
 #### Example — multi-turn history compressed into one body
 
@@ -1490,6 +1490,26 @@ v1.6 adds (no new grammar — every v1.6 body parses under a v1.5 parser):
 * **Backward compatible**: `mode=cond` is an ordinary kvpair and the elision marker lives
   inside a quoted string — v1.5 parsers parse v1.6 bodies unchanged. V13–V15 are
   delivery-/encoder-side rules and do not affect message-level validity of existing bodies.
+
+### 14.11 v1.6.1 Changes
+
+v1.6.1 promotes the verbose `#msg` turn marker from "also valid; typically an encoder
+intermediate" to the **normative multi-party carrier** (§3.3). No new grammar: the `#msg`
+form and its named `r=<ident>` role already exist in v1.6 (`role := "u" / "a" / "s" / ident`);
+this change makes its use normative and adds a constraint on the compact rewrite.
+
+* **Normative rule** (§3.3): a conversation with more than two non-system participants SHOULD
+  be carried in the verbose `#msg` form with a distinct named `r=` participant id per speaker;
+  a gateway MUST NOT rewrite such a conversation into the compact `#<role><n>` form, whose
+  `u`/`a`/`s` letters cannot name a third speaker.
+* **Measured basis**: on multi-party interview transcripts, named `#msg` markers scored
+  +36.6 pp attribution coverage over free-prose summarization and +16.4 pp over the same
+  extractive quotes under compact `u`/`a` markers (the win localized to the marker form, not
+  the quoting); free-prose summarization collapsed to 2.95 misattributions per answer
+  (pairl-bench STAGE-6A confirmatory, n=100 × R=3, pre-registered, pilot-replicated).
+* **Backward compatible**: two-party (+system) bodies are unaffected and MAY keep using the
+  compact markers; the `#msg` form already parses under a v1.5/v1.6 parser, so no parser or
+  validator change is required.
 
 ---
 

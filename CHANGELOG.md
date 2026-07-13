@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.6.1] - 2026-07-13
+
+### Changed
+
+#### Verbose `#msg` marker is now the normative multi-party carrier (§3.3, §14.11)
+- A conversation with **more than two non-system participants SHOULD** be carried in the verbose `#msg <id> r=<speaker> parent=<id>` form with a distinct named `r=` participant id per speaker. A gateway **MUST NOT** rewrite such a conversation into the compact `#<role><n>` form (its `u`/`a`/`s` letters cannot name a third speaker).
+- **Measured basis**: on multi-party interview transcripts, named `#msg` markers scored **+36.6 pp** attribution coverage over free-prose summarization and **+16.4 pp** over the *same* extractive quotes carried under compact `u`/`a` markers — the win is in the named marker, not the quoting — while free-prose summarization collapsed to 2.95 misattributions per answer (pairl-bench STAGE-6A confirmatory, n=100 × R=3, pre-registered, pilot-replicated).
+
+### Compatibility
+- **No new grammar**: the `#msg` form and its named `r=<ident>` role already existed in v1.6 (`role := "u" / "a" / "s" / ident`); v1.5/v1.6 parsers and validators are unaffected. Two-party (+system) bodies MAY keep using compact markers.
+
+---
+
 ## [1.6.0] - 2026-07-11
 
 ### Added
