@@ -404,6 +404,23 @@ fn parse_record(line: &str) -> Record {
     }
 }
 
+/// Check whether `s` contains a run of ≥`min_len` consecutive hex digits.
+/// Mirrors the Python/TypeScript regex `[a-fA-F0-9]{12,}`.
+fn contains_hex_run(s: &str, min_len: usize) -> bool {
+    let mut run = 0usize;
+    for c in s.chars() {
+        if c.is_ascii_hexdigit() {
+            run += 1;
+            if run >= min_len {
+                return true;
+            }
+        } else {
+            run = 0;
+        }
+    }
+    false
+}
+
 fn is_valid_ref(v: &str) -> bool {
     if !v.starts_with("ref:") || v.contains(' ') {
         return false;
@@ -509,8 +526,7 @@ pub fn validate(msg: &Message, strict: bool) -> ValidationResult {
         for (k, v) in &rec.kv {
             if v.contains("http://") || v.contains("https://") {
                 emit(&mut r, enforce_v1, format!("V1: intent param '{k}' has a URL (move to #ref): {v}"));
-            } else if v.chars().filter(|c| c.is_ascii_hexdigit()).count() >= 12
-                && v.chars().all(|c| c.is_ascii_hexdigit())
+            } else if contains_hex_run(v, 12)
             {
                 emit(&mut r, enforce_v1, format!("V1: intent param '{k}' looks like a hash (move to #ref): {v}"));
             } else if k != "l" && k != "m" && v.chars().any(|c| c.is_ascii_digit()) {

@@ -3,7 +3,7 @@
 import { createHash } from "node:crypto";
 import type { Message, PairlRecord } from "./model.js";
 
-const HEADER_ORDER = ["v", "id", "mid", "sid", "ts", "p", "parent", "root", "deps", "budget", "quota"];
+const HEADER_ORDER = ["v", "id", "mid", "sid", "ts", "p", "parent", "root", "deps", "budget", "limit"];
 const ATOM_OK = /^[A-Za-z0-9:._/@+-]+$/;
 
 function fmtValue(v: string): string {

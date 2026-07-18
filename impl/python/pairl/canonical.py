@@ -11,7 +11,7 @@ import hashlib
 from .core import Message, Record
 
 # Canonical header order (§9.1). Unknown headers are appended, sorted.
-_HEADER_ORDER = ["v", "id", "mid", "sid", "ts", "p", "parent", "root", "deps", "budget", "quota"]
+_HEADER_ORDER = ["v", "id", "mid", "sid", "ts", "p", "parent", "root", "deps", "budget", "limit"]
 _ATOM_OK = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:._/@+-")
 
 
